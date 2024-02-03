@@ -7,7 +7,9 @@
 
 constexpr const auto html =
 R"html(
-  <style>
+<!-- this is a copy of the html used for the gui, including css and javascript for ease of editing -->
+
+<style>
     body {
         margin: 0;
         font-family: Arial, sans-serif;
@@ -134,9 +136,12 @@ R"html(
         border-top: 1px solid #ccc; /* Specify the thickness, style, and color of the separator */
         margin: 20px 0; /* Adjust margin as needed */
     }
-  </style>
+    .disabled {
+        background-color: #919191 !important;
+    }
+</style>
 
-  <div class="container">
+<div class="container">
     <div id="topbar">
         <button id="button-new" class="menu-button">New Login</button>
         <ul>
@@ -163,9 +168,54 @@ R"html(
             
         </div>
     </div>
-  </div>
-  <script>
-    var textDiv = document.getElementById('right-section');
+</div>
+
+<script>
+    // screen when adding a new login
+        const newLoginSection = `
+        <h2 id="main-header">New Login</h2>
+        <div id="login-form">
+            <input class="addNewText" id="login-name-field" type="text" name="login" placeholder="Login">
+            <input class="addNewText" id="username-field" type="text" name="username" placeholder="Username">
+            <input class="addNewText" id="password-field" type="text" name="password" placeholder="Password">
+            <input class="addNewButton" id="generate-password" type="button" value="Generate">
+            <div id="password-options">
+                <label id="length-label" for="length-slider">Length: 12</label>
+                <input id="length-slider" type="range" id="length-slider" min="8" max="36" value="12" step="1">
+
+                <label for="uppercase-check">Uppcase</label>
+                <input class="addNewCheck" id="1" type="checkbox" name="uppercase-check" checked>
+
+                <label for="lowercase-check">Lowercase</label>
+                <input class="addNewCheck" id="2" type="checkbox" name="lowercase-check" checked>
+
+                <label for="numbers-check">Numbers</label>
+                <input class="addNewCheck" id="4" type="checkbox" name="numbers-check" checked>
+
+                <label for="symbol-check">Symbols</label>
+                <input class="addNewCheck" id="8" type="checkbox" name="symbol-check" checked>
+            </div>
+            <input class="addNewButton" id="save-button" type="button" value="Save">
+        </div>
+        `;
+    // screen when viewing an existing login
+    const displayLoginSection = `
+        <h2 id="main-header">Saved login</h2>
+        <div id="login-form">
+            <input id="login-name" type="text" name="login" placeholder="Login" disabled>
+            <input id="username" type="text" name="username" placeholder="Username" disabled>
+            <input id="password" type="text" name="password" placeholder="Password" disabled>
+            <div id="info-buttons">
+                <div>
+                    <input type="button" value="show/hide" id="show-button">
+                    <input type="button" value="copy" id="copy-button">
+                </div>
+                <input type="button" value="delete" id="delete-button">
+            </div>
+        </div>
+    `;
+    //
+
     //menu stuff
     var menuButtons = [
         document.getElementById('button-new'),
@@ -204,8 +254,78 @@ R"html(
         reader.readAsBinaryString(currFile);
     });
 
-    //
-  </script>
+    //screen toggle stuff
+    var addingLogin = false;
+    var rightSection = document.getElementById('right-section');
+
+    function toggleScreen(){
+        addingLogin = !addingLogin;
+        if(addingLogin){
+            rightSection.innerHTML = newLoginSection;
+            loadAddLoginScreen();
+        } else {
+            rightSection.innerHTML = displayLoginSection;
+        }
+    }
+
+    //add new login stuff
+    var generatePasswordBtn;
+    var saveLoginBtn;
+    var newLoginTexts = [];
+    var newLoginChecks = [];
+    var newLoginSlider;
+    var newLoginLength;
+    var passwordOptions = 15;
+    var passwordLength = 12;
+
+    function loadAddLoginScreen(){
+        //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
+        generatePasswordBtn = document.getElementById('generate-password');
+        saveLoginBtn = document.getElementById('save-button');
+
+        newLoginFields = document.querySelectorAll('.addNewText');
+        newLoginChecks = document.querySelectorAll('.addNewCheck');
+        newLoginSlider = document.getElementById('length-slider');
+        newLoginLength = document.getElementById('length-label');
+
+        newLoginSlider.addEventListener('change',(element)=>{
+            passwordLength = element.target.value;
+            newLoginLength.innerHTML = `Length: ${passwordLength}`;
+        });
+
+        newLoginChecks.forEach((element)=>{
+            element.addEventListener('change',()=>{
+                if(element.checked){
+                    passwordOptions += parseInt(element.id);
+                }
+                else {
+                    passwordOptions -= parseInt(element.id);
+                }
+                if(passwordOptions == 0){
+                    generatePasswordBtn.classList.add("disabled");
+                    generatePasswordBtn.value = 'Select at least one option';
+                }
+                else {
+                    generatePasswordBtn.classList.remove("disabled");
+                    generatePasswordBtn.value = 'Generate';
+                }
+            });
+        });
+
+        generatePasswordBtn.addEventListener('click', ()=> {
+            if(passwordOptions == 0){
+                return;
+            }
+            window.generatePassword(passwordLength,passwordOptions);
+        });
+        //
+        function setPasswordField(newValue){
+            document.getElementById('password-field').value = newValue;
+        }
+    }
+
+    toggleScreen();
+</script>
 )html";
 
 void initializeUI(webview::webview *w){
@@ -235,6 +355,13 @@ void initializeUI(webview::webview *w){
         std::cout << req << std::endl;
       },
       nullptr
+    );
+    w->bind(
+        "generatePassword",
+        [&](const std::string &seq, const std::string &req, void *) {
+            std::cout << req << std::endl;
+        },
+        nullptr
     );
 
     w->set_html(html);

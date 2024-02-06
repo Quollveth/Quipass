@@ -1,12 +1,14 @@
 #include "uiHandler.hpp"
 
+#include "fileHandler.hpp"
+
 #include "webview.h"
 
 #include <string>
 #include <iostream>
 #include <random>
 
-constexpr const auto html =
+constexpr const auto html = 
 R"html(
 <!-- this is a copy of the html used for the gui, including css and javascript for ease of editing -->
 
@@ -172,10 +174,6 @@ R"html(
 </div>
 
 <script>
-    //webview doesn't have console.log lol
-    function printOut(string){
-        window.printOut(string);
-    }
     // screen when adding a new login
         const newLoginSection = `
         <h2 id="main-header">New Login</h2>
@@ -220,6 +218,7 @@ R"html(
         </div>
     `;
     //
+    var isProcessing = false; //no spamming shit
 
     //menu stuff
     var menuButtons = [
@@ -272,6 +271,10 @@ R"html(
             rightSection.innerHTML = displayLoginSection;
         }
     }
+
+    //saved logins list stuff
+    var loginListHead = document.getElementById('logins-list');
+
 
     //add new login stuff
     var generatePasswordBtn;
@@ -329,6 +332,33 @@ R"html(
                 newLoginFields[2].value = result;
             });
         });
+
+        saveLoginBtn.addEventListener('click', ()=>{
+            if(isProcessing){
+                return;
+            }
+
+            isProcessing = true;
+
+            const loginInfo = {
+                login: newLoginFields[0].value,
+                user: newLoginFields[1].value,
+                pass: newLoginFields[2].value
+            };
+
+            newLoginFields[0].value = "";
+            newLoginFields[1].value = "";
+            newLoginFields[2].value = "";
+
+            window.saveLogin(JSON.stringify(loginInfo)).then(result =>{
+                isProcessing = false;
+            });
+        });
+    }
+
+    //end
+    function testing(string){
+        loginListHead.innerHTML = `<li>${string}</li>`;
     }
 
     toggleScreen();
@@ -401,23 +431,20 @@ std::string stringToResponse(const std::string& input) {
     return "[\"" + input + "\"]";
 }
 
-void initializeUI(webview::webview *w){
-    w->set_title("Password Manager");
-    w->set_size(480, 320, WEBVIEW_HINT_NONE);
+webview::webview initializeUI(){
+    webview::webview w(false, nullptr);
+
+    fileHandler currentFile;
+
+    w.set_title("Password Manager");
+    w.set_size(480, 320, WEBVIEW_HINT_NONE);
 
     //binds
         // seq -> sequential id of the request
         // req -> json array with all arguments passed
         // resolve returns the function (resolved promise), resolve(request id, status, return value)
-    w->bind(
-        "printOut",
-        [&](const std::string &seq, const std::string &req, void *){
-            std::cout << req << std::endl;
-        },
-        nullptr
-    );
 
-    w->bind(
+    w.bind(
         "menuButton",
         [&](const std::string &seq, const std::string &req, void *){
             std::cout << req[1] << std::endl;
@@ -427,14 +454,14 @@ void initializeUI(webview::webview *w){
         },
         nullptr
     );
-    w->bind(
+    w.bind(
       "sendFile",
       [&](const std::string &seq, const std::string &req, void *) {
         std::cout << req << std::endl;
       },
       nullptr
     );
-    w->bind(
+    w.bind(
         "generatePassword",
         [&](const std::string &seq, const std::string &req, void *) {
 
@@ -444,11 +471,30 @@ void initializeUI(webview::webview *w){
             
             std::string password = generatePassword(length,flags);
 
-            w->resolve(seq,0,stringToResponse(password));
+            w.resolve(seq,0,stringToResponse(password));
+        },
+        nullptr
+    );
+    w.bind(
+        "saveLogin",
+        [&](const std::string &seq, const std::string &req, void *) {
+            std::string innerJson = webview::detail::json_parse(req, "", 0);
+
+            struct login parsed;
+            parsed.login = webview::detail::json_parse(innerJson, "login", 0);
+            parsed.username = webview::detail::json_parse(innerJson, "user", 0);
+            parsed.password = webview::detail::json_parse(innerJson, "pass", 0);
+
+            std::cout << loginToJson(parsed) << std::endl;
+
+            currentFile.addLogin(parsed);
+
+            w.resolve(seq,0,"");
         },
         nullptr
     );
 
-    w->set_html(html);
-    w->run();
+    w.set_html(html);
+
+    return w;
 }

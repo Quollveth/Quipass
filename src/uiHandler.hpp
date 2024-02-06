@@ -1,3 +1,9 @@
+#ifndef UIHANDLER_INCLUDED
+
+#define UIHANDLER_INCLUDED
+
 #include "webview.h"
 
-void initializeUI(webview::webview *w);
+webview::webview initializeUI();
+
+#endif

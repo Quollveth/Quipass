@@ -5,6 +5,7 @@ int WINAPI WinMain(HINSTANCE /*hInst*/, HINSTANCE /*hPrevInst*/, LPSTR /*lpCmdLi
 #else
 int main() {
 #endif
-    webview::webview window(false, nullptr);
-	initializeUI(&window);
+    webview::webview window = initializeUI();
+
+    window.run();
 }

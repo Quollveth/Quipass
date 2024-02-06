@@ -162,10 +162,6 @@
 </div>
 
 <script>
-    //webview doesn't have console.log lol
-    function printOut(string){
-        window.printOut(string);
-    }
     // screen when adding a new login
         const newLoginSection = `
         <h2 id="main-header">New Login</h2>
@@ -210,6 +206,7 @@
         </div>
     `;
     //
+    var isProcessing = false; //no spamming shit
 
     //menu stuff
     var menuButtons = [
@@ -262,6 +259,10 @@
             rightSection.innerHTML = displayLoginSection;
         }
     }
+
+    //saved logins list stuff
+    var loginListHead = document.getElementById('logins-list');
+
 
     //add new login stuff
     var generatePasswordBtn;
@@ -319,6 +320,33 @@
                 newLoginFields[2].value = result;
             });
         });
+
+        saveLoginBtn.addEventListener('click', ()=>{
+            if(isProcessing){
+                return;
+            }
+
+            isProcessing = true;
+
+            const loginInfo = {
+                login: newLoginFields[0].value,
+                user: newLoginFields[1].value,
+                pass: newLoginFields[2].value
+            };
+
+            newLoginFields[0].value = "";
+            newLoginFields[1].value = "";
+            newLoginFields[2].value = "";
+
+            window.saveLogin(JSON.stringify(loginInfo)).then(result =>{
+                isProcessing = false;
+            });
+        });
+    }
+
+    //end
+    function testing(string){
+        loginListHead.innerHTML = `<li>${string}</li>`;
     }
 
     toggleScreen();

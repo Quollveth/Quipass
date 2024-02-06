@@ -162,6 +162,10 @@
 </div>
 
 <script>
+    //webview doesn't have console.log lol
+    function printOut(string){
+        window.printOut(string);
+    }
     // screen when adding a new login
         const newLoginSection = `
         <h2 id="main-header">New Login</h2>
@@ -307,9 +311,14 @@
             if(passwordOptions == 0){
                 return;
             }
-            window.generatePassword(passwordLength,passwordOptions);
+            const passwordInput = {
+                length: passwordLength,
+                flags: passwordOptions
+            };
+            window.generatePassword(JSON.stringify(passwordInput)).then(result=>{
+                newLoginFields[2].value = result;
+            });
         });
-        //
     }
 
     toggleScreen();

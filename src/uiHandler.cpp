@@ -4,6 +4,7 @@
 
 #include <string>
 #include <iostream>
+#include <random>
 
 constexpr const auto html =
 R"html(
@@ -171,6 +172,10 @@ R"html(
 </div>
 
 <script>
+    //webview doesn't have console.log lol
+    function printOut(string){
+        window.printOut(string);
+    }
     // screen when adding a new login
         const newLoginSection = `
         <h2 id="main-header">New Login</h2>
@@ -316,29 +321,102 @@ R"html(
             if(passwordOptions == 0){
                 return;
             }
-            window.generatePassword(passwordLength,passwordOptions);
+            const passwordInput = {
+                length: passwordLength,
+                flags: passwordOptions
+            };
+            window.generatePassword(JSON.stringify(passwordInput)).then(result=>{
+                newLoginFields[2].value = result;
+            });
         });
-        //
-        function setPasswordField(newValue){
-            document.getElementById('password-field').value = newValue;
-        }
     }
 
     toggleScreen();
 </script>
 )html";
 
-void initializeUI(webview::webview *w){
-    unsigned int count = 0;
+int randomInRange(int min, int max, bool newSeed = true) {
+    static std::mt19937 eng{std::random_device{}()};
+    if(newSeed){
+        eng.seed(std::random_device{}());
+    }
+    std::uniform_int_distribution<int> distribution(min, max);
+    return distribution(eng);
+}
 
-    w->set_title("Bind Example");
+enum passwordFlags {
+    NONE   = 0,
+    UPPER  = 1,         // 0001 : 1
+    LOWER  = 1 << 1,    // 0010 : 2
+    NUMBER = 1 << 2,    // 0100 : 4
+    SYMBOL = 1 << 3     // 1000 : 8
+};
+
+inline char randomCharacter(enum passwordFlags type){
+    switch(type){
+        case SYMBOL: //possible returns: # $ & '(gets turned into @ since @ is all the way in ascii 64 for some reason)
+            {
+                char ret = randomInRange(35,39); 
+                return (ret == 39)?'@':static_cast<char>(ret);
+            }
+        case NUMBER:
+            return randomInRange(48,57);
+        case UPPER:
+            return randomInRange(65,90);
+        case LOWER:
+            return randomInRange(97,122);
+    }
+    return 0;
+}
+
+std::string generatePassword(int length, int flags){
+    enum passwordFlags type;
+    int choice;
+    std::string password = "";
+    for(int i=0;i<length;i++){
+        type = NONE;
+        while(type == NONE){
+            choice = randomInRange(1,4,false);
+            switch(choice){
+                case 1: 
+                    if(flags & UPPER) type = UPPER;
+                    break;
+                case 2:
+                    if(flags & LOWER) type = LOWER;
+                    break;
+                case 3:
+                    if(flags & NUMBER) type = NUMBER;
+                    break;
+                case 4:
+                    if(flags & SYMBOL) type = SYMBOL;
+                    break;            
+                }
+        }
+        password += randomCharacter(type);
+    }
+    return password;
+}
+
+std::string stringToResponse(const std::string& input) {
+    return "[\"" + input + "\"]";
+}
+
+void initializeUI(webview::webview *w){
+    w->set_title("Password Manager");
     w->set_size(480, 320, WEBVIEW_HINT_NONE);
 
     //binds
         // seq -> sequential id of the request
         // req -> json array with all arguments passed
         // resolve returns the function (resolved promise), resolve(request id, status, return value)
-    
+    w->bind(
+        "printOut",
+        [&](const std::string &seq, const std::string &req, void *){
+            std::cout << req << std::endl;
+        },
+        nullptr
+    );
+
     w->bind(
         "menuButton",
         [&](const std::string &seq, const std::string &req, void *){
@@ -359,7 +437,14 @@ void initializeUI(webview::webview *w){
     w->bind(
         "generatePassword",
         [&](const std::string &seq, const std::string &req, void *) {
-            std::cout << req << std::endl;
+
+            std::string innerJson = webview::detail::json_parse(req, "", 0);
+            int length = std::stoi(webview::detail::json_parse(innerJson, "length", 0));
+            int flags =  std::stoi(webview::detail::json_parse(innerJson, "flags", 0));
+            
+            std::string password = generatePassword(length,flags);
+
+            w->resolve(seq,0,stringToResponse(password));
         },
         nullptr
     );

@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <vector>
 #include <sstream>
 
 struct login fileHandler::getLogin(int index){
@@ -41,6 +40,6 @@ std::string fileHandler::JsonOut(){
     return json + "]";
 }
 
-void fileHandler::addLogin(struct login login){
-    //TODO
+void fileHandler::addLogin(std::string &name, std::string &user, std::string &pass){
+
 }

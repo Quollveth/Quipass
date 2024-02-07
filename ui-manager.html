@@ -206,7 +206,6 @@
         </div>
     `;
     //
-    var isProcessing = false; //no spamming shit
 
     //menu stuff
     var menuButtons = [
@@ -284,12 +283,12 @@
         newLoginSlider = document.getElementById('length-slider');
         newLoginLength = document.getElementById('length-label');
 
-        newLoginSlider.addEventListener('change',(element)=>{
+        newLoginSlider.addEventListener('change',(element) => {
             passwordLength = element.target.value;
             newLoginLength.innerHTML = `Length: ${passwordLength}`;
         });
 
-        newLoginChecks.forEach((element)=>{
+        newLoginChecks.forEach((element) => {
             element.addEventListener('change',()=>{
                 if(element.checked){
                     passwordOptions += parseInt(element.id);
@@ -318,29 +317,18 @@
             };
             window.generatePassword(JSON.stringify(passwordInput)).then(result=>{
                 newLoginFields[2].value = result;
+                window.updateField(2,newLoginFields[2].value);
+            });
+        });
+
+        newLoginFields.forEach((element,index) => {
+            element.addEventListener('change',(event)=>{
+                window.updateField(index,event.target.value);
             });
         });
 
         saveLoginBtn.addEventListener('click', ()=>{
-            if(isProcessing){
-                return;
-            }
 
-            isProcessing = true;
-
-            const loginInfo = {
-                login: newLoginFields[0].value,
-                user: newLoginFields[1].value,
-                pass: newLoginFields[2].value
-            };
-
-            newLoginFields[0].value = "";
-            newLoginFields[1].value = "";
-            newLoginFields[2].value = "";
-
-            window.saveLogin(JSON.stringify(loginInfo)).then(result =>{
-                isProcessing = false;
-            });
         });
     }
 

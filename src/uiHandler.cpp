@@ -1,7 +1,5 @@
 #include "uiHandler.hpp"
 
-#include "fileHandler.hpp"
-
 #include "webview.h"
 
 #include <string>
@@ -218,7 +216,6 @@ R"html(
         </div>
     `;
     //
-    var isProcessing = false; //no spamming shit
 
     //menu stuff
     var menuButtons = [
@@ -296,12 +293,12 @@ R"html(
         newLoginSlider = document.getElementById('length-slider');
         newLoginLength = document.getElementById('length-label');
 
-        newLoginSlider.addEventListener('change',(element)=>{
+        newLoginSlider.addEventListener('change',(element) => {
             passwordLength = element.target.value;
             newLoginLength.innerHTML = `Length: ${passwordLength}`;
         });
 
-        newLoginChecks.forEach((element)=>{
+        newLoginChecks.forEach((element) => {
             element.addEventListener('change',()=>{
                 if(element.checked){
                     passwordOptions += parseInt(element.id);
@@ -330,29 +327,18 @@ R"html(
             };
             window.generatePassword(JSON.stringify(passwordInput)).then(result=>{
                 newLoginFields[2].value = result;
+                window.updateField(2,newLoginFields[2].value);
+            });
+        });
+
+        newLoginFields.forEach((element,index) => {
+            element.addEventListener('change',(event)=>{
+                window.updateField(index,event.target.value);
             });
         });
 
         saveLoginBtn.addEventListener('click', ()=>{
-            if(isProcessing){
-                return;
-            }
 
-            isProcessing = true;
-
-            const loginInfo = {
-                login: newLoginFields[0].value,
-                user: newLoginFields[1].value,
-                pass: newLoginFields[2].value
-            };
-
-            newLoginFields[0].value = "";
-            newLoginFields[1].value = "";
-            newLoginFields[2].value = "";
-
-            window.saveLogin(JSON.stringify(loginInfo)).then(result =>{
-                isProcessing = false;
-            });
         });
     }
 
@@ -434,7 +420,9 @@ std::string stringToResponse(const std::string& input) {
 webview::webview initializeUI(){
     webview::webview w(false, nullptr);
 
-    fileHandler currentFile;
+    std::string newLoginName;
+    std::string newLoginUser;
+    std::string newLoginPass;
 
     w.set_title("Password Manager");
     w.set_size(480, 320, WEBVIEW_HINT_NONE);
@@ -447,17 +435,14 @@ webview::webview initializeUI(){
     w.bind(
         "menuButton",
         [&](const std::string &seq, const std::string &req, void *){
-            std::cout << req[1] << std::endl;
-            if(std::atoi(&req[1]) == 0){
-                std::cout << "new login pressed" << std::endl;
-            }
+
         },
         nullptr
     );
     w.bind(
       "sendFile",
       [&](const std::string &seq, const std::string &req, void *) {
-        std::cout << req << std::endl;
+        
       },
       nullptr
     );
@@ -468,28 +453,42 @@ webview::webview initializeUI(){
             std::string innerJson = webview::detail::json_parse(req, "", 0);
             int length = std::stoi(webview::detail::json_parse(innerJson, "length", 0));
             int flags =  std::stoi(webview::detail::json_parse(innerJson, "flags", 0));
-            
+            {
             std::string password = generatePassword(length,flags);
 
             w.resolve(seq,0,stringToResponse(password));
+            }
         },
         nullptr
     );
     w.bind(
         "saveLogin",
         [&](const std::string &seq, const std::string &req, void *) {
-            std::string innerJson = webview::detail::json_parse(req, "", 0);
-
-            struct login parsed;
-            parsed.login = webview::detail::json_parse(innerJson, "login", 0);
-            parsed.username = webview::detail::json_parse(innerJson, "user", 0);
-            parsed.password = webview::detail::json_parse(innerJson, "pass", 0);
-
-            std::cout << loginToJson(parsed) << std::endl;
-
-            currentFile.addLogin(parsed);
 
             w.resolve(seq,0,"");
+        },
+        nullptr
+    );
+    w.bind(
+        "updateField",
+        [&](const std::string &seq, const std::string &req, void *){
+            int fieldToUpdate = req[1] - '0';
+            std::string newValue =  webview::detail::json_parse(req, "", 1);
+
+            switch(fieldToUpdate){
+                case 0:
+                    newLoginName = newValue;
+                    break;
+                case 1:
+                    newLoginUser = newValue;
+                    break;
+                case 2:
+                    newLoginPass = newValue;
+                    break;
+            }
+
+            std::cout << "Updated field " << fieldToUpdate << " to " << newValue << std::endl;
+
         },
         nullptr
     );

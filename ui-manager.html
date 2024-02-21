@@ -283,6 +283,17 @@
         newLoginSlider = document.getElementById('length-slider');
         newLoginLength = document.getElementById('length-label');
 
+        function refreshLogin(){
+            newLoginFields.forEach(field => {
+                field.value = '';
+            });
+            newLoginChecks.forEach(check => {
+                check.checked = true;
+            });
+            newLoginSlider.value = 12;
+            newLoginLength.innerHTML = `Length: ${passwordLength}`;
+        };
+
         newLoginSlider.addEventListener('change',(element) => {
             passwordLength = element.target.value;
             newLoginLength.innerHTML = `Length: ${passwordLength}`;
@@ -328,7 +339,9 @@
         });
 
         saveLoginBtn.addEventListener('click', ()=>{
-
+            window.saveLogin().then(result => {
+                refreshLogin();
+            });
         });
     }
 

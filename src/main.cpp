@@ -1,5 +1,7 @@
 #include "webview.h"
 
+#include "fileHandler.hpp"
+
 #include <string>
 #include <iostream>
 #include <random>
@@ -291,6 +293,17 @@ R"html(
         newLoginSlider = document.getElementById('length-slider');
         newLoginLength = document.getElementById('length-label');
 
+        function refreshLogin(){
+            newLoginFields.forEach(field => {
+                field.value = '';
+            });
+            newLoginChecks.forEach(check => {
+                check.checked = true
+            });
+            newLoginSlider.value = 12;
+            newLoginLength.innerHTML = `Length: ${passwordLength}`;
+        };
+
         newLoginSlider.addEventListener('change',(element) => {
             passwordLength = element.target.value;
             newLoginLength.innerHTML = `Length: ${passwordLength}`;
@@ -336,7 +349,9 @@ R"html(
         });
 
         saveLoginBtn.addEventListener('click', ()=>{
-
+            window.saveLogin().then(result => {
+                refreshLogin();
+            });
         });
     }
 
@@ -462,6 +477,22 @@ int main(){
     w.bind(
         "saveLogin",
         [&](const std::string &seq, const std::string &req, void *) {
+
+            std::cout << "Value of login name: " << newLoginName << std::endl;
+            std::cout << "Value of login user: " << newLoginUser << std::endl;
+            std::cout << "Value of login password: " << newLoginPass << std::endl;
+
+            struct login savedLogin;
+
+            savedLogin.login = newLoginName;
+            savedLogin.username = newLoginUser;
+            savedLogin.password = newLoginPass;
+
+            std::cout << std::endl;
+
+            std::cout << loginToJson(savedLogin) << std::endl;
+
+            w.eval("testing('test')");
 
             w.resolve(seq,0,"");
         },

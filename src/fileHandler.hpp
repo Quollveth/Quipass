@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <iostream>
 
 struct login{
     std::string login;
@@ -11,7 +12,7 @@ struct login{
     std::string password;
 };
 
-inline std::string loginToJson(struct login loginInfo){
+inline std::string loginToJson(const struct login& loginInfo){
 
     std::stringstream ret;
 

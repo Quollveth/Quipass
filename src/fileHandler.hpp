@@ -4,7 +4,6 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include <iostream>
 
 struct login{
     std::string login;
@@ -27,10 +26,12 @@ inline std::string loginToJson(const struct login& loginInfo){
 
 class fileHandler {
     private:
-    std::vector<struct login> storedLogins;
+    std::vector<struct login> storedLogins;   
 
     public:
-    fileHandler() : storedLogins(std::vector<struct login>()) {}
+    int logins;
+
+    fileHandler() : storedLogins(std::vector<struct login>()), logins(0) {}
 
     struct login getLogin(int index);
 
@@ -38,7 +39,9 @@ class fileHandler {
 
     std::string JsonOut();
 
-    void addLogin(std::string &name, std::string &user, std::string &pass);
+    std::string getLoginNames();
+    
+    void addLogin(const struct login& loginInfo);
 };
 
 #endif

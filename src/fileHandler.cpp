@@ -19,6 +19,7 @@ std::string fileHandler::getLoginJson(int index){
     const login& loginInfo = *it;
 
     std::stringstream ret;
+    ret << "{";
     ret << "\"login\":\"" << loginInfo.login << "\",";
     ret << "\"username\":\"" << loginInfo.username << "\",";
     ret << "\"password\":\"" << loginInfo.password << "\"";
@@ -40,6 +41,21 @@ std::string fileHandler::JsonOut(){
     return json + "]";
 }
 
-void fileHandler::addLogin(std::string &name, std::string &user, std::string &pass){
+std::string fileHandler::getLoginNames(){
+    std::string json = "[";
+    auto it = storedLogins.begin();
+    while(it != storedLogins.end()){
+        json += "\"";
+        json += storedLogins.at(std::distance(storedLogins.begin(), it)).login;
+        json += "\"";
+        ++it;
+        if(it != storedLogins.end()){
+            json += ",";
+        }
+    }
+    return json + "]";
+}
 
+void fileHandler::addLogin(const struct login& loginInfo){
+    storedLogins.push_back(loginInfo);
 }

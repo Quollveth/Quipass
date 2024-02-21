@@ -7,8 +7,7 @@
 #include <random>
 
 constexpr const auto html = 
-R"html(
-<!-- this is a copy of the html used for the gui, including css and javascript for ease of editing -->
+R"html(<!-- this is a copy of the html used for the gui, including css and javascript for ease of editing -->
 
 <style>
     body {
@@ -298,7 +297,7 @@ R"html(
                 field.value = '';
             });
             newLoginChecks.forEach(check => {
-                check.checked = true
+                check.checked = true;
             });
             newLoginSlider.value = 12;
             newLoginLength.innerHTML = `Length: ${passwordLength}`;
@@ -356,13 +355,29 @@ R"html(
     }
 
     //end
+    function updateList(stringValues){
+        //update the list head to have a button for each saved login
+        const values = JSON.parse(stringValues);
+
+        loginListHead.innerHTML = "";
+        values.forEach(value => {
+            const listElement = document.createElement('li');
+            const button = document.createElement('button');
+            button.textContent = value;
+            button.addEventListener('click',()=>{
+                window.openLogin(value);
+            });
+            listElement.appendChild(button);
+            loginListHead.appendChild(listElement);
+        });
+    }
+
     function testing(string){
         loginListHead.innerHTML = `<li>${string}</li>`;
     }
 
     toggleScreen();
-</script>
-)html";
+</script>)html";
 
 int randomInRange(int min, int max, bool newSeed = true) {
     static std::mt19937 eng{std::random_device{}()};
@@ -437,6 +452,8 @@ int main(){
     std::string newLoginUser;
     std::string newLoginPass;
 
+    fileHandler storage;
+
     w.set_title("Password Manager");
     w.set_size(480, 320, WEBVIEW_HINT_NONE);
 
@@ -478,21 +495,18 @@ int main(){
         "saveLogin",
         [&](const std::string &seq, const std::string &req, void *) {
 
-            std::cout << "Value of login name: " << newLoginName << std::endl;
-            std::cout << "Value of login user: " << newLoginUser << std::endl;
-            std::cout << "Value of login password: " << newLoginPass << std::endl;
-
             struct login savedLogin;
 
             savedLogin.login = newLoginName;
             savedLogin.username = newLoginUser;
             savedLogin.password = newLoginPass;
 
-            std::cout << std::endl;
+            storage.addLogin(savedLogin);
 
-            std::cout << loginToJson(savedLogin) << std::endl;
-
-            w.eval("testing('test')");
+            //calls the updateList() function in javascript passing the login names as parameter so the list can be updated in html
+            std::string ret = "updateList('" + storage.getLoginNames() + "')";
+            
+            w.eval(ret);
 
             w.resolve(seq,0,"");
         },
@@ -515,9 +529,13 @@ int main(){
                     newLoginPass = newValue;
                     break;
             }
-
-            std::cout << "Updated field " << fieldToUpdate << " to " << newValue << std::endl;
-
+        },
+        nullptr
+    );
+    w.bind(
+        "openLogin",
+        [&](const std::string &seq, const std::string &req, void *){
+            std::cout << req << std::endl;
         },
         nullptr
     );

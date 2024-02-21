@@ -346,6 +346,23 @@
     }
 
     //end
+    function updateList(stringValues){
+        //update the list head to have a button for each saved login
+        const values = JSON.parse(stringValues);
+
+        loginListHead.innerHTML = "";
+        values.forEach(value => {
+            const listElement = document.createElement('li');
+            const button = document.createElement('button');
+            button.textContent = value;
+            button.addEventListener('click',()=>{
+                window.openLogin(value);
+            });
+            listElement.appendChild(button);
+            loginListHead.appendChild(listElement);
+        });
+    }
+
     function testing(string){
         loginListHead.innerHTML = `<li>${string}</li>`;
     }

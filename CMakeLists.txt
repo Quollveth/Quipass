@@ -5,3 +5,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../bin)
 
 add_subdirectory(libs)
 add_subdirectory(src)
+
+add_custom_target(update_html
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/updateHTML.py
+    COMMENT "Updating HTML source"
+)
+add_dependencies(quipass update_html)

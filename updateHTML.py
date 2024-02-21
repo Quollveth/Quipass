@@ -27,5 +27,5 @@ if __name__ == "__main__":
     replacement_file = "ui-manager.html"
 
     replace_between_tokens(input_file, token1, token2, replacement_file)
-    print(f"Updated ${input_file} with contents from ${replacement_file}")
+    print(f"Updated {input_file} with contents from {replacement_file}")
 

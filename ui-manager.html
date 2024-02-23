@@ -1,16 +1,30 @@
 <!-- this is a copy of the html used for the gui, including css and javascript for ease of editing -->
 
 <style>
+    /* global styles */
     body {
         margin: 0;
         font-family: Arial, sans-serif;
         background-color: #e7e7e7;
     }
-    .container {
+
+    #container { /* webview does not use head and body tags, the container div is serving as the body tag for convenience */
         display: flex;
         flex-direction: column;
         min-height: 100vh;
     }
+
+    .separator {
+        border-top: 1px solid #ccc; /* Specify the thickness, style, and color of the separator */
+        margin: 20px 0;
+    }
+
+    .disabled {
+        background-color: #919191 !important;
+    }
+
+
+    /* header */
     #topbar {
         background-color: #333;
         color: #fff;
@@ -28,6 +42,7 @@
     #topbar li {
         list-style: none;
     }
+
     .menu-button {
         background-color: transparent;
         border: none;
@@ -47,11 +62,15 @@
     #button-exit:hover{
         color: #ff4848;
     }
+
+    /* #content holds both sections */
     #content {
         flex: 1;
         display: flex;
         padding: 20px;
     }
+
+    /* left section holds login list and file input */
     #left-section {
         width: 30%;
         background-color: #fff;
@@ -69,6 +88,59 @@
     #left-section ul li {
         margin-bottom: 10px;
     }
+
+    #file-password{
+        margin-bottom: 15px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        height: 2em;
+    }
+    #fileInput{
+        display: none;
+    }
+    #fileInputLabel{
+        border: 1px solid #ccc;
+        display: inline-block;
+        padding: 6px 12px;
+        cursor: pointer;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+    }
+    #decrypt-button{
+        background-color: transparent;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        cursor:pointer;
+        transition: background-color 0.3s, color 0.3s;
+        height: 2em;
+    }
+    #decrypt-button:hover{
+        background-color: #ccc;
+    }
+    #selectedFileLabel {
+        display: inline-block;
+        margin-left: 10px;
+        color: #333;
+    }
+
+    .loginListItem {
+        width: fit-content;
+        padding-right: 30px;
+        padding: 10px;
+        cursor: pointer;
+        border: none;
+        background-color: transparent;
+        font-size: 1.2em;
+        text-align: start;
+        color: #333;
+    }
+    .loginListItem:hover {
+        color:#00aeff;
+    }
+
+    /* right section can switch between 3 screens, either adding a new login or showing the info of a saved login, with the option of neither */
+
     #right-section {
         width: 70%;
         background-color: #fff;
@@ -79,11 +151,22 @@
         margin-top: 0;
         color: #333;
     }
-    #login-form input[type="text"],
-    #login-form input[type="password"],
-    #login-form input[type="range"],
-    #login-form input[type="checkbox"],
-    #login-form input[type="button"] {
+
+    #right-section input[type="button"] {
+        background-color: #333;
+        color: #fff;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        transition: background-color 0.3s, color 0.3s;
+    }
+    #right-section input[type="button"]:hover {
+        background-color: #919191;
+    }
+
+    /* new login screen */
+
+    #login-form input {
         width: 100%;
         padding: 10px;
         margin-bottom: 15px;
@@ -92,15 +175,7 @@
         border-radius: 5px;
         font-size: 16px;
     }
-    #login-form input[type="button"] {
-        background-color: #333;
-        color: #fff;
-        cursor: pointer;
-        transition: background-color 0.3s, color 0.3s;
-    }
-    #login-form input[type="button"]:hover {
-        background-color: #919191;
-    }
+
     #password-options label {
         display: block;
         margin-bottom: 5px;
@@ -108,6 +183,9 @@
     #password-options input[type="checkbox"] {
         margin-right: 5px;
     }
+
+    /* view login info screen */
+
     #info-buttons {
         display: flex;
         justify-content: space-between;
@@ -123,16 +201,13 @@
     #list-header input{
         margin-top: 5;
     }
-    .separator {
-        border-top: 1px solid #ccc; /* Specify the thickness, style, and color of the separator */
-        margin: 20px 0; /* Adjust margin as needed */
-    }
-    .disabled {
-        background-color: #919191 !important;
+    #loginEditButtonsHeader{
+        display: flex;
+        margin-top: 50px;
     }
 </style>
 
-<div class="container">
+<div id="container">
     <div id="topbar">
         <button id="button-new" class="menu-button">New Login</button>
         <ul>
@@ -144,9 +219,13 @@
     <div id="content">
         <div id="left-section">
             <div id="list-header">           
-                <input type="file" id="fileInput" accept=".txt">
+                <div>
+                    <input type="file" id="fileInput" accept=".txt">
+                    <label for="fileInput" id="fileInputLabel"> Browse </label>
+                    <span id="selectedFileLabel"></span>
+                </div>
                 <input id="file-password" type="password" name="password" placeholder="File Password">
-                <input type="button" value="decrypt" id="decrypt-button">
+                <input type="button" value="Decrypt" id="decrypt-button">
             </div>
             <div class="separator"></div>
             <h2>Saved Logins</h2>     
@@ -163,13 +242,13 @@
 
 <script>
     // screen when adding a new login
-        const newLoginSection = `
+    const newLoginSection = `
         <h2 id="main-header">New Login</h2>
         <div id="login-form">
             <input class="addNewText" id="login-name-field" type="text" name="login" placeholder="Login">
             <input class="addNewText" id="username-field" type="text" name="username" placeholder="Username">
             <input class="addNewText" id="password-field" type="text" name="password" placeholder="Password">
-            <input class="addNewButton" id="generate-password" type="button" value="Generate">
+            <input id="generate-password" type="button" value="Generate">
             <div id="password-options">
                 <label id="length-label" for="length-slider">Length: 12</label>
                 <input id="length-slider" type="range" id="length-slider" min="8" max="36" value="12" step="1">
@@ -186,7 +265,7 @@
                 <label for="symbol-check">Symbols</label>
                 <input class="addNewCheck" id="8" type="checkbox" name="symbol-check" checked>
             </div>
-            <input class="addNewButton" id="save-button" type="button" value="Save">
+            <input id="save-button" type="button" value="Save">
         </div>
         `;
     // screen when viewing an existing login
@@ -198,10 +277,13 @@
             <input id="password" type="text" name="password" placeholder="Password" disabled>
             <div id="info-buttons">
                 <div>
-                    <input type="button" value="show/hide" id="show-button">
-                    <input type="button" value="copy" id="copy-button">
+                    <input type="button" value="Show" id="show-button">
+                    <input type="button" value="Copy" id="copy-button">
                 </div>
-                <input type="button" value="delete" id="delete-button">
+            </div>
+            <div id="loginEditButtonsHeader">
+                    <input id="save-button" type="button" value="Edit">
+                    <input id="save-button" type="button" value="Delete">
             </div>
         </div>
     `;
@@ -224,10 +306,12 @@
     var fileIn = document.getElementById('fileInput');
     var decryptBtn = document.getElementById('decrypt-button');
     var passwordField = document.getElementById('file-password');
+    var filenameLabel = document.getElementById('selectedFileLabel');
     var currFile;
     
     fileIn.addEventListener('change', (event)=>{
         currFile = event.target.files[0];
+        filenameLabel.textContent = event.target.files[0].name;
     });
 
     decryptBtn.addEventListener('click', ()=> {
@@ -246,22 +330,54 @@
     });
 
     //screen toggle stuff
-    var addingLogin = false;
+    var currentScreen = 0;
+    // 1 - new login
+    // 2 - view login
+    // 0 - welcome
+
     var rightSection = document.getElementById('right-section');
 
+    function openNewLoginScreen(){
+        currentScreen = 1;
+        toggleScreen();
+    }
+
+    function openLoginInfoScreen(){
+        currentScreen = 2;
+        toggleScreen();
+    }
+
+    function closeScreens(){
+        //closes either one of the screens opened above
+        currentScreen = 0;
+        toggleScreen();
+    }
+
     function toggleScreen(){
-        addingLogin = !addingLogin;
-        if(addingLogin){
-            rightSection.innerHTML = newLoginSection;
-            loadAddLoginScreen();
-        } else {
-            rightSection.innerHTML = displayLoginSection;
+        switch(currentScreen){
+            case 0:
+                rightSection.innerHTML = "";
+                break;
+            case 1:
+                rightSection.innerHTML = newLoginSection;
+                loadAddLoginScreen();
+                break;
+            case 2:
+                rightSection.innerHTML = displayLoginSection;
+                loadLoginInfoScreen();
+                break;
         }
+
     }
 
     //saved logins list stuff
     var loginListHead = document.getElementById('logins-list');
 
+    //login info stuff
+    function loadLoginInfoScreen(){
+        //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
+        
+    }
 
     //add new login stuff
     var generatePasswordBtn;
@@ -351,13 +467,15 @@
         const values = JSON.parse(stringValues);
 
         loginListHead.innerHTML = "";
-        values.forEach(value => {
+        values.forEach((value,i) => {
             const listElement = document.createElement('li');
             const button = document.createElement('button');
             button.textContent = value;
-            button.addEventListener('click',()=>{
-                window.openLogin(value);
+            button.id = `login-button-${i}`;
+            button.addEventListener('click',(event)=>{
+                window.openLogin(event.target.id);
             });
+            button.classList.add('loginListItem');
             listElement.appendChild(button);
             loginListHead.appendChild(listElement);
         });
@@ -367,5 +485,5 @@
         loginListHead.innerHTML = `<li>${string}</li>`;
     }
 
-    toggleScreen();
+    openLoginInfoScreen();
 </script>

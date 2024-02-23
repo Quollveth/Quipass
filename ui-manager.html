@@ -23,6 +23,10 @@
         background-color: #919191 !important;
     }
 
+    .hidden {
+        display: none !important;
+    }
+
 
     /* header */
     #topbar {
@@ -194,17 +198,36 @@
         display: flex;
     }
     #info-buttons input[type="button"] {
-        min-width: 100;
-        max-width: 100;
+        min-width: 40;
         max-height: 40;
+        font-size: small;
+        margin-bottom: 5em;
     }
+
     #list-header input{
         margin-top: 5;
     }
-    #loginEditButtonsHeader{
-        display: flex;
-        margin-top: 50px;
+
+    #login-delete-button{
+        max-width: 20em;
     }
+
+    #login-delete-button:hover{
+        background-color: #dc3545 !important;
+    }
+    #deletionLabel{
+        display: inline-block;
+        margin-left: 10px;
+        color: #333;
+        width: fit-content;
+        position: absolute;
+        margin-top: -20px;
+    }
+    #button-container {
+        position: relative;
+    }
+
+
 </style>
 
 <div id="container">
@@ -272,22 +295,22 @@
     const displayLoginSection = `
         <h2 id="main-header">Saved login</h2>
         <div id="login-form">
-            <input id="login-name" type="text" name="login" placeholder="Login" disabled>
-            <input id="username" type="text" name="username" placeholder="Username" disabled>
-            <input id="password" type="text" name="password" placeholder="Password" disabled>
+            <input class="login-info-field" id="login-info-name" type="text" name="login" placeholder="Login" disabled>
+            <input class="login-info-field" id="login-info-username" type="text" name="username" placeholder="Username" disabled>
+            <input class="login-info-field" id="login-info-password" type="password" name="password" placeholder="Password" disabled>
             <div id="info-buttons">
                 <div>
                     <input type="button" value="Show" id="show-button">
                     <input type="button" value="Copy" id="copy-button">
                 </div>
             </div>
-            <div id="loginEditButtonsHeader">
-                    <input id="save-button" type="button" value="Edit">
-                    <input id="save-button" type="button" value="Delete">
+            
+            <div id="button-container">
+                <label for="login-delete-button" id="deletionLabel" class="hidden">Press again to confirm</label>
+                <input id="login-delete-button" type="button" value="Delete">
             </div>
         </div>
     `;
-    //
 
     //menu stuff
     var menuButtons = [
@@ -370,19 +393,107 @@
 
     }
 
+
     //saved logins list stuff
     var loginListHead = document.getElementById('logins-list');
 
+    function updateList(stringValues){
+        //update the list head to have a button for each saved login
+        const values = JSON.parse(stringValues);
+
+        loginListHead.innerHTML = "";
+        values.forEach((value,i) => {
+            const listElement = document.createElement('li');
+            const button = document.createElement('button');
+            button.textContent = value;
+            button.id = `login-button-${i}`;
+            button.addEventListener('click',(event)=>{
+                window.openLogin(event.target.id);
+            });
+            button.classList.add('loginListItem');
+            listElement.appendChild(button);
+            loginListHead.appendChild(listElement);
+        });
+    }
+
+
     //login info stuff
-    function loadLoginInfoScreen(){
+    var loginInfoFields = [];
+    var loginInfoShowButton;
+    var loginInfoCopyButton;
+    var loginInfoEditButton;
+    var loginInfoDeleteButton;
+    var loginInfoDeleteLabel;
+    var showingPassword;
+    var clickcount;
+
+    function loadLoginInfoScreen(loginInfo){
         //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
-        
+        loginInfoShowButton = document.getElementById('show-button');
+        loginInfoCopyButton = document.getElementById('copy-button');
+        loginInfoEditButton = document.getElementById('login-edit-button');
+        loginInfoDeleteButton = document.getElementById('login-delete-button');
+        loginInfoDeleteLabel = document.getElementById('deletionLabel');
+
+        loginInfoFields = document.querySelectorAll('.login-info-field');
+
+        showingPassword = false;
+        clickcount = 0;
+
+        //const loginData = JSON.parse(loginInfo);
+
+        loginInfoFields[0].value = 'loginData.login';
+        loginInfoFields[1].value = 'loginData.username';
+        loginInfoFields[2].value = 'loginData.password';
+
+        document.addEventListener('click', (event) => {
+            if (event.target != loginInfoDeleteButton) {
+                clickcount = 0;
+                loginInfoDeleteLabel.classList.add('hidden');
+            }
+        });
+
+        loginInfoShowButton.addEventListener('click',()=>{
+            if(showingPassword){
+                loginInfoShowButton.value = 'Show';
+                loginInfoFields[2].setAttribute('type','password');
+
+            } else{
+                loginInfoShowButton.value = 'Hide';
+                loginInfoFields[2].setAttribute('type','text');
+            }
+            showingPassword = !showingPassword;            
+        });
+
+        loginInfoDeleteButton.addEventListener('click',()=>{
+            clickcount++;
+            if(clickcount == 1){
+                loginInfoDeleteLabel.classList.remove('hidden');
+                return;
+            }
+            if(clickcount == 2){
+                loginInfoDeleteLabel.classList.add('hidden');
+                clickcount = 0;
+                window.deleteLogin();
+                currentScreen = 0;
+                toggleScreen();
+            }
+        });
+
+        loginInfoCopyButton.addEventListener('click',()=>{
+            navigator.clipboard.writeText(loginInfoFields[2].value);
+            loginInfoCopyButton.value = 'Copied';
+            setTimeout(()=>{
+                loginInfoCopyButton.value = 'Copy';
+            },2000)
+        })
+                
     }
 
     //add new login stuff
     var generatePasswordBtn;
     var saveLoginBtn;
-    var newLoginTexts = [];
+    var newLoginFields = [];
     var newLoginChecks = [];
     var newLoginSlider;
     var newLoginLength;
@@ -462,28 +573,6 @@
     }
 
     //end
-    function updateList(stringValues){
-        //update the list head to have a button for each saved login
-        const values = JSON.parse(stringValues);
-
-        loginListHead.innerHTML = "";
-        values.forEach((value,i) => {
-            const listElement = document.createElement('li');
-            const button = document.createElement('button');
-            button.textContent = value;
-            button.id = `login-button-${i}`;
-            button.addEventListener('click',(event)=>{
-                window.openLogin(event.target.id);
-            });
-            button.classList.add('loginListItem');
-            listElement.appendChild(button);
-            loginListHead.appendChild(listElement);
-        });
-    }
-
-    function testing(string){
-        loginListHead.innerHTML = `<li>${string}</li>`;
-    }
 
     openLoginInfoScreen();
 </script>

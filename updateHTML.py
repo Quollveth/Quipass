@@ -2,14 +2,13 @@
 
 def replace_between_tokens(input_file, token1, token2, replacement_file):
     "replaces all content between tokens with the contents of another file"
-    with open(input_file, 'r+') as f:
+    with open(input_file, 'r') as f:
         content = f.read()
 
     start_index = content.find(token1)
     end_index = content.find(token2)
 
     if start_index == -1 or end_index == -1:
-        print("error")
         return
 
     with open(replacement_file, 'r') as f:

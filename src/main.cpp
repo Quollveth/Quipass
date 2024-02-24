@@ -420,7 +420,9 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             button.id = `login-button-${i}`;
             button.addEventListener('click',(event)=>{
                 var btnID = event.target.id;
-                window.openLogin(btnID[btnID.length - 1]);
+                window.openLogin(btnID[btnID.length - 1]).then(result => {
+                    openLoginInfoScreen(JSON.stringify(result));
+                });
             });
             button.classList.add('loginListItem');
             listElement.appendChild(button);
@@ -582,6 +584,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
         saveLoginBtn.addEventListener('click', ()=>{
             window.saveLogin().then(result => {
                 refreshLogin();
+                updateList(JSON.stringify(result));
             });
         });
     }
@@ -592,7 +595,10 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     openNewLoginScreen();
 </script>)html";
 
-//password generation stuff
+///////////////////////////////////////////////
+//password generation functions
+//////////////////////////////////////////////
+
 int randomInRange(int min, int max, bool newSeed = true) {
     static std::mt19937 eng{std::random_device{}()};
     if(newSeed){
@@ -627,7 +633,7 @@ inline char randomCharacter(enum passwordFlags type){
     return 0;
 }
 
-std::string generatePassword(int length, int flags){
+std::string randomPassword(int length, int flags){
     enum passwordFlags type;
     int choice;
     std::string password = "";
@@ -655,19 +661,116 @@ std::string generatePassword(int length, int flags){
     return password;
 }
 
-//makes a string into a json array webview will accept
-inline std::string stringToResponse(const std::string& input) {
+
+///////////////////////////////////////////////
+//helper functions
+//////////////////////////////////////////////
+fileHandler LOGIN_STORAGE;
+struct login TEMPORARY_LOGIN;
+
+#define DEBUG
+
+inline std::string toResponse(const std::string& input) {
+    //makes a string into a json array webview will accept
     return "[\"" + input + "\"]";
+}
+
+inline std::string getRequest(const std::string& request){
+    //returns string missing first and last 2 characters
+    //when a single parameter is sent from a webview bind it comes as a json array containing only one element ["data"] we can remove the [" from both sides to get the passed parameter
+    return request.substr(2, request.length() - 4);
+}
+
+///////////////////////////////////////////////
+//dispatcher
+//////////////////////////////////////////////
+
+//the binds dispatch their call into the proper function instead of cluttering main()
+
+std::string generate_password(const std::string &request){
+    std::string innerJson = webview::detail::json_parse(request, "", 0);
+    int length = std::stoi(webview::detail::json_parse(innerJson, "length", 0));
+    int flags =  std::stoi(webview::detail::json_parse(innerJson, "flags", 0));
+    
+    std::string password = randomPassword(length,flags);
+
+    #ifdef DEBUG
+    std::cout << "Generated password " << password << std::endl;
+    #endif
+
+    return toResponse(password);
+}
+
+std::string save_login(const std::string &request){
+    LOGIN_STORAGE.addLogin(TEMPORARY_LOGIN);
+
+    #ifdef DEBUG
+    std::cout << "Saved login " << loginToJson(TEMPORARY_LOGIN) << std::endl;
+    #endif
+
+    return LOGIN_STORAGE.getLoginNames();
+}
+
+std::string open_login(const std::string &request){
+    std::string loginIndex =  getRequest(request);
+    //the js array with the list and the storage vector with the structs should alawys be aligned so a search isn't needed
+
+    #ifdef DEBUG
+    std::cout << "Opening login " << loginIndex << std::endl;
+    #endif
+
+    return LOGIN_STORAGE.getLoginJson(std::stoi(loginIndex));          
+}
+
+std::string update_field(const std::string &request){
+    int fieldToUpdate = request[1] - '0';
+    std::string newValue =  webview::detail::json_parse(request, "", 1);
+
+    switch(fieldToUpdate){
+        case 0:
+            TEMPORARY_LOGIN.login = newValue;
+            break;
+        case 1:
+            TEMPORARY_LOGIN.username = newValue;
+            break;
+        case 2:
+            TEMPORARY_LOGIN.password = newValue;
+            break;
+    }
+
+    #ifdef DEBUG
+    std::cout << "Updated field " << fieldToUpdate << " to \"" << newValue << "\"" << std::endl;
+    #endif
+
+    return "";
+}
+
+enum webviewBinds {
+    MENU_BUTTON,
+    SEND_FILE,
+    GENERATE_PASSWORD,
+    SAVE_LOGIN,
+    OPEN_LOGIN,
+    UPDATE_FIELD
+};
+
+std::string bindDispatcher(enum webviewBinds calledBind,const std::string &request){
+    
+    #ifdef DEBUG
+    std::cout << "\nReceived bind " << calledBind << " with request " << request << std::endl;
+    #endif
+
+    switch(calledBind){
+        case GENERATE_PASSWORD: return generate_password(request);
+        case OPEN_LOGIN:        return open_login(request);
+        case SAVE_LOGIN:        return save_login(request);
+        case UPDATE_FIELD:      return update_field(request);
+    }
+    return ""; //we should never be here but the compiles dislikes if this doesn't exist
 }
 
 int main(){
     webview::webview w(false, nullptr);
-
-    std::string newLoginName;
-    std::string newLoginUser;
-    std::string newLoginPass;
-
-    fileHandler storage;
 
     w.set_title("Password Manager");
     w.set_size(480, 320, WEBVIEW_HINT_NONE);
@@ -680,84 +783,43 @@ int main(){
     w.bind(
         "menuButton",
         [&](const std::string &seq, const std::string &req, void *){
-            if(std::atoi(&req[1]) == 0){
-                w.eval("openNewLoginScreen();");
-            }
+            w.resolve(seq,0,bindDispatcher(MENU_BUTTON,req));
         },
         nullptr
     );
     w.bind(
       "sendFile",
       [&](const std::string &seq, const std::string &req, void *) {
-        
+            w.resolve(seq,0,bindDispatcher(SEND_FILE,req));
       },
       nullptr
     );
     w.bind(
         "generatePassword",
         [&](const std::string &seq, const std::string &req, void *) {
-
-            std::string innerJson = webview::detail::json_parse(req, "", 0);
-            int length = std::stoi(webview::detail::json_parse(innerJson, "length", 0));
-            int flags =  std::stoi(webview::detail::json_parse(innerJson, "flags", 0));
-            {
-            std::string password = generatePassword(length,flags);
-
-            w.resolve(seq,0,stringToResponse(password));
-            }
+            w.resolve(seq,0,bindDispatcher(GENERATE_PASSWORD,req));
         },
         nullptr
     );
     w.bind(
         "saveLogin",
         [&](const std::string &seq, const std::string &req, void *) {
-
-            struct login savedLogin;
-
-            savedLogin.login = newLoginName;
-            savedLogin.username = newLoginUser;
-            savedLogin.password = newLoginPass;
-
-            storage.addLogin(savedLogin);
-
-            //calls the updateList() function in javascript passing the login names as parameter so the list can be updated in html
-            std::string ret = "updateList('" + storage.getLoginNames() + "')";
-            
-            w.eval(ret);
-
-            w.resolve(seq,0,"");
-        },
-        nullptr
-    );
-    w.bind(
-        "updateField",
-        [&](const std::string &seq, const std::string &req, void *){
-            int fieldToUpdate = req[1] - '0';
-            std::string newValue =  webview::detail::json_parse(req, "", 1);
-
-            switch(fieldToUpdate){
-                case 0:
-                    newLoginName = newValue;
-                    break;
-                case 1:
-                    newLoginUser = newValue;
-                    break;
-                case 2:
-                    newLoginPass = newValue;
-                    break;
-            }
+            w.resolve(seq,0,bindDispatcher(SAVE_LOGIN,req));
         },
         nullptr
     );
     w.bind(
         "openLogin",
         [&](const std::string &seq, const std::string &req, void *){
-            std::string loginIndex = req.substr(2, req.length() - 4); //remove first and last 2 characters
-            //the js array with the list and the storage vector with the structs should alawys be aligned so a search isn't actually needed
+            w.resolve(seq,0,bindDispatcher(OPEN_LOGIN,req));
+        },
+        nullptr
+    );
 
-            std::string loginInfo = storage.getLoginJson(std::stoi(loginIndex));
-            std::string ret = "openLoginInfoScreen('" + loginInfo + "')";            
-            w.eval(ret);            
+    w.bind(
+        "updateField",
+        [&](const std::string &seq, const std::string &req, void *){
+            w.resolve(seq,0,bindDispatcher(UPDATE_FIELD,req));
         },
         nullptr
     );

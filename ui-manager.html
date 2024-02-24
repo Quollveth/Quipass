@@ -411,7 +411,9 @@
             button.id = `login-button-${i}`;
             button.addEventListener('click',(event)=>{
                 var btnID = event.target.id;
-                window.openLogin(btnID[btnID.length - 1]);
+                window.openLogin(btnID[btnID.length - 1]).then(result => {
+                    openLoginInfoScreen(JSON.stringify(result));
+                });
             });
             button.classList.add('loginListItem');
             listElement.appendChild(button);
@@ -573,6 +575,7 @@
         saveLoginBtn.addEventListener('click', ()=>{
             window.saveLogin().then(result => {
                 refreshLogin();
+                updateList(JSON.stringify(result));
             });
         });
     }

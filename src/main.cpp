@@ -310,7 +310,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             <div id="info-buttons">
                 <div>
                     <input type="button" value="Show" id="show-button">
-                    <input type="button" value="Copy" id="copy-button">
+<!--                    <input type="button" value="Copy" id="copy-button"> -->
                 </div>
             </div>
             
@@ -370,17 +370,20 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     var rightSection = document.getElementById('right-section');
 
     function openNewLoginScreen(){
+        loginInfo = "";
         currentScreen = 1;
         toggleScreen();
     }
 
-    function openLoginInfoScreen(){
+    function openLoginInfoScreen(loginJson){
+        loginInfo = loginJson;
         currentScreen = 2;
         toggleScreen();
     }
 
     function closeScreens(){
         //closes either one of the screens opened above
+        loginInfo = "";
         currentScreen = 0;
         toggleScreen();
     }
@@ -402,7 +405,6 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
 
     }
 
-
     //saved logins list stuff
     var loginListHead = document.getElementById('logins-list');
 
@@ -417,7 +419,8 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             button.textContent = value;
             button.id = `login-button-${i}`;
             button.addEventListener('click',(event)=>{
-                window.openLogin(event.target.id);
+                var btnID = event.target.id;
+                window.openLogin(btnID[btnID.length - 1]);
             });
             button.classList.add('loginListItem');
             listElement.appendChild(button);
@@ -427,6 +430,8 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
 
 
     //login info stuff
+    var loginInfo;
+
     var loginInfoFields = [];
     var loginInfoShowButton;
     var loginInfoCopyButton;
@@ -436,7 +441,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     var showingPassword;
     var clickcount;
 
-    function loadLoginInfoScreen(loginInfo){
+    function loadLoginInfoScreen(){
         //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
         loginInfoShowButton = document.getElementById('show-button');
         loginInfoCopyButton = document.getElementById('copy-button');
@@ -449,11 +454,11 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
         showingPassword = false;
         clickcount = 0;
 
-        //const loginData = JSON.parse(loginInfo);
+        const loginData = JSON.parse(loginInfo);
 
-        loginInfoFields[0].value = 'loginData.login';
-        loginInfoFields[1].value = 'loginData.username';
-        loginInfoFields[2].value = 'loginData.password';
+        loginInfoFields[0].value = loginData.login;
+        loginInfoFields[1].value = loginData.username;
+        loginInfoFields[2].value = loginData.password;
 
         document.addEventListener('click', (event) => {
             if (event.target != loginInfoDeleteButton) {
@@ -583,7 +588,8 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
 
     //end
 
-    openLoginInfoScreen();
+    //openLoginInfoScreen();
+    openNewLoginScreen();
 </script>)html";
 
 //password generation stuff
@@ -674,7 +680,9 @@ int main(){
     w.bind(
         "menuButton",
         [&](const std::string &seq, const std::string &req, void *){
-
+            if(std::atoi(&req[1]) == 0){
+                w.eval("openNewLoginScreen();");
+            }
         },
         nullptr
     );
@@ -744,7 +752,12 @@ int main(){
     w.bind(
         "openLogin",
         [&](const std::string &seq, const std::string &req, void *){
-            std::cout << storage.JsonOut() << std::endl;
+            std::string loginIndex = req.substr(2, req.length() - 4); //remove first and last 2 characters
+            //the js array with the list and the storage vector with the structs should alawys be aligned so a search isn't actually needed
+
+            std::string loginInfo = storage.getLoginJson(std::stoi(loginIndex));
+            std::string ret = "openLoginInfoScreen('" + loginInfo + "')";            
+            w.eval(ret);            
         },
         nullptr
     );

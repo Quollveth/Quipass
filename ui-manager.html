@@ -301,7 +301,7 @@
             <div id="info-buttons">
                 <div>
                     <input type="button" value="Show" id="show-button">
-                    <input type="button" value="Copy" id="copy-button">
+<!--                    <input type="button" value="Copy" id="copy-button"> -->
                 </div>
             </div>
             
@@ -361,17 +361,20 @@
     var rightSection = document.getElementById('right-section');
 
     function openNewLoginScreen(){
+        loginInfo = "";
         currentScreen = 1;
         toggleScreen();
     }
 
-    function openLoginInfoScreen(){
+    function openLoginInfoScreen(loginJson){
+        loginInfo = loginJson;
         currentScreen = 2;
         toggleScreen();
     }
 
     function closeScreens(){
         //closes either one of the screens opened above
+        loginInfo = "";
         currentScreen = 0;
         toggleScreen();
     }
@@ -393,7 +396,6 @@
 
     }
 
-
     //saved logins list stuff
     var loginListHead = document.getElementById('logins-list');
 
@@ -408,7 +410,8 @@
             button.textContent = value;
             button.id = `login-button-${i}`;
             button.addEventListener('click',(event)=>{
-                window.openLogin(event.target.id);
+                var btnID = event.target.id;
+                window.openLogin(btnID[btnID.length - 1]);
             });
             button.classList.add('loginListItem');
             listElement.appendChild(button);
@@ -418,6 +421,8 @@
 
 
     //login info stuff
+    var loginInfo;
+
     var loginInfoFields = [];
     var loginInfoShowButton;
     var loginInfoCopyButton;
@@ -427,7 +432,7 @@
     var showingPassword;
     var clickcount;
 
-    function loadLoginInfoScreen(loginInfo){
+    function loadLoginInfoScreen(){
         //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
         loginInfoShowButton = document.getElementById('show-button');
         loginInfoCopyButton = document.getElementById('copy-button');
@@ -440,11 +445,11 @@
         showingPassword = false;
         clickcount = 0;
 
-        //const loginData = JSON.parse(loginInfo);
+        const loginData = JSON.parse(loginInfo);
 
-        loginInfoFields[0].value = 'loginData.login';
-        loginInfoFields[1].value = 'loginData.username';
-        loginInfoFields[2].value = 'loginData.password';
+        loginInfoFields[0].value = loginData.login;
+        loginInfoFields[1].value = loginData.username;
+        loginInfoFields[2].value = loginData.password;
 
         document.addEventListener('click', (event) => {
             if (event.target != loginInfoDeleteButton) {
@@ -574,5 +579,6 @@
 
     //end
 
-    openLoginInfoScreen();
+    //openLoginInfoScreen();
+    openNewLoginScreen();
 </script>

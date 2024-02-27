@@ -11,6 +11,12 @@ struct login{
     std::string password;
 };
 
+enum loginFields{
+    NAME,
+    USER,
+    PASS
+};
+
 inline std::string loginToJson(const struct login& loginInfo){
 
     std::stringstream ret;
@@ -42,6 +48,8 @@ class fileHandler {
     std::string getLoginNames();
     
     void addLogin(const struct login& loginInfo);
+
+    void updateLogin(int index,enum loginFields field,const std::string &newValue);
 };
 
 #endif

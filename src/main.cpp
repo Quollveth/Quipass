@@ -273,7 +273,9 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
 </div>
 
 <script>
-    // screen when adding a new login
+    //the variables below are used to toggle the right section between the two modes, for viewing an existing login and for adding a new one
+
+    // section when adding a new login
     const newLoginSection = `
         <h2 id="main-header">New Login</h2>
         <div id="login-form">
@@ -300,7 +302,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             <input id="save-button" type="button" value="Save">
         </div>
         `;
-    // screen when viewing an existing login
+    // section when viewing an existing login
     const displayLoginSection = `
         <h2 id="main-header">Saved login</h2>
         <div id="login-form">
@@ -314,6 +316,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
                 </div>
             </div>
             
+            <input id="login-edit-button" type="button" value="Edit">
             <div id="button-container">
                 <label for="login-delete-button" id="deletionLabel" class="hidden">Press again to confirm</label>
                 <input id="login-delete-button" type="button" value="Delete">
@@ -321,7 +324,10 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
         </div>
     `;
 
-    //menu stuff
+    ///////////////////////////////////////////////
+    //top bar
+    //////////////////////////////////////////////
+
     var menuButtons = [
         document.getElementById('button-new'),
         document.getElementById('button-save'),
@@ -334,11 +340,17 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
         });
     });
 
-    //file loading stuff
+    ///////////////////////////////////////////////
+    //file handling
+    //////////////////////////////////////////////
+
+    //i wanted to handle file I/O on the c++ side, but due to webview limitations we cannot get the full path of a file so it has to be done here
+
     var fileIn = document.getElementById('fileInput');
     var decryptBtn = document.getElementById('decrypt-button');
     var passwordField = document.getElementById('file-password');
     var filenameLabel = document.getElementById('selectedFileLabel');
+
     var currFile;
     
     fileIn.addEventListener('change', (event)=>{
@@ -361,7 +373,26 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
         reader.readAsBinaryString(currFile);
     });
 
-    //screen toggle stuff
+    ///////////////////////////////////////////////
+    //right section toggle
+    //////////////////////////////////////////////
+    //this section is split in two screens, one for viewing a login and one for editing or adding a new one
+    //both screens have it's html elements declared as undefined beforehand since non existing DOM elements cannot be referenced
+    //each screen has a function to load it's DOM
+    //this is done later
+
+    //2 variables we need to keep track for both so editing a saved login can work
+
+    //editing is whether or not a login is being edited to change the behavior of the save button
+    //currentLogin is the login object
+
+    var editing = false;
+    var currentLogin = {
+        name : "",
+        user : "",
+        pass : ""
+    };
+
     var currentScreen = 0;
     // 1 - new login
     // 2 - view login
@@ -370,20 +401,35 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     var rightSection = document.getElementById('right-section');
 
     function openNewLoginScreen(){
-        loginInfo = "";
+        if(!editing){
+            currentLogin.name = "";
+            currentLogin.user = "";
+            currentLogin.pass = "";
+        }
+
         currentScreen = 1;
         toggleScreen();
     }
 
     function openLoginInfoScreen(loginJson){
-        loginInfo = loginJson;
+        editing = false;
+        var loginInfo = JSON.parse(loginJson);
+
+        currentLogin.name = loginInfo.login;
+        currentLogin.user = loginInfo.username;
+        currentLogin.pass = loginInfo.password;
+
         currentScreen = 2;
         toggleScreen();
     }
 
     function closeScreens(){
         //closes either one of the screens opened above
-        loginInfo = "";
+        currentLogin.name = "";
+        currentLogin.user = "";
+        currentLogin.pass = "";
+        editing = false;
+
         currentScreen = 0;
         toggleScreen();
     }
@@ -405,69 +451,74 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
 
     }
 
-    //saved logins list stuff
+    ///////////////////////////////////////////////
+    //list of saved logins
+    //////////////////////////////////////////////
+
     var loginListHead = document.getElementById('logins-list');
 
     function updateList(stringValues){
-        //update the list head to have a button for each saved login
+        //creates a html list of buttons each one matching the name of a saved login
         const values = JSON.parse(stringValues);
 
         loginListHead.innerHTML = "";
         values.forEach((value,i) => {
+            //create the button
             const listElement = document.createElement('li');
             const button = document.createElement('button');
             button.textContent = value;
             button.id = `login-button-${i}`;
+
+            //the button has an event listener that passes it's id so we can get the info of the clicked login
+            //since the list and the storage vector are aligned a search is not needed
             button.addEventListener('click',(event)=>{
                 var btnID = event.target.id;
                 window.openLogin(btnID[btnID.length - 1]).then(result => {
                     openLoginInfoScreen(JSON.stringify(result));
                 });
             });
+
             button.classList.add('loginListItem');
             listElement.appendChild(button);
             loginListHead.appendChild(listElement);
         });
     }
 
+    ///////////////////////////////////////////////
+    //right section
+    //////////////////////////////////////////////
 
-    //login info stuff
-    var loginInfo;
 
+    ///////////////////////////////////////////////
+    //viewing info of a saved login
+    //////////////////////////////////////////////
+
+    //DOM elements
     var loginInfoFields = [];
     var loginInfoShowButton;
     var loginInfoCopyButton;
     var loginInfoEditButton;
     var loginInfoDeleteButton;
     var loginInfoDeleteLabel;
+
+    //variables for this screen
     var showingPassword;
     var clickcount;
 
     function loadLoginInfoScreen(){
-        //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
         loginInfoShowButton = document.getElementById('show-button');
         loginInfoCopyButton = document.getElementById('copy-button');
         loginInfoEditButton = document.getElementById('login-edit-button');
         loginInfoDeleteButton = document.getElementById('login-delete-button');
         loginInfoDeleteLabel = document.getElementById('deletionLabel');
-
         loginInfoFields = document.querySelectorAll('.login-info-field');
 
         showingPassword = false;
         clickcount = 0;
 
-        const loginData = JSON.parse(loginInfo);
-
-        loginInfoFields[0].value = loginData.login;
-        loginInfoFields[1].value = loginData.username;
-        loginInfoFields[2].value = loginData.password;
-
-        document.addEventListener('click', (event) => {
-            if (event.target != loginInfoDeleteButton) {
-                clickcount = 0;
-                loginInfoDeleteLabel.classList.add('hidden');
-            }
-        });
+        loginInfoFields[0].value = currentLogin.name;
+        loginInfoFields[1].value = currentLogin.user;
+        loginInfoFields[2].value = currentLogin.pass;
 
         loginInfoShowButton.addEventListener('click',()=>{
             if(showingPassword){
@@ -481,7 +532,16 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             showingPassword = !showingPassword;            
         });
 
+        document.addEventListener('click', (event) => {
+            //this exists for the delete button below, clicking anywhere else will reset the double click counter
+            if (event.target != loginInfoDeleteButton) {
+                clickcount = 0;
+                loginInfoDeleteLabel.classList.add('hidden');
+            }
+        });
+
         loginInfoDeleteButton.addEventListener('click',()=>{
+            //needs to be clicked twice before it works, shows a warning after first click
             clickcount++;
             if(clickcount == 1){
                 loginInfoDeleteLabel.classList.remove('hidden');
@@ -496,8 +556,14 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             }
         });
 
+        loginInfoEditButton.addEventListener('click',()=>{
+            editing = true;
+            openNewLoginScreen();
+        });
+
         loginInfoCopyButton.addEventListener('click',()=>{
-            navigator.clipboard.writeText(loginInfoFields[2].value);
+            //navigator.clipboard seems to not actually work in webview, copy button was commented out temporarily, i might handle it on the c++ side later
+            navigator.clipboard.writeText(currentLogin.pass);
             loginInfoCopyButton.value = 'Copied';
             setTimeout(()=>{
                 loginInfoCopyButton.value = 'Copy';
@@ -507,29 +573,34 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     }
 
     //add new login stuff
+
+    //DOM elements
     var generatePasswordBtn;
     var saveLoginBtn;
     var newLoginFields = [];
     var newLoginChecks = [];
     var newLoginSlider;
     var newLoginLength;
+
+    //variables for this screen
     var passwordOptions = 15;
     var passwordLength = 12;
 
     function loadAddLoginScreen(){
-        //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
         generatePasswordBtn = document.getElementById('generate-password');
         saveLoginBtn = document.getElementById('save-button');
-
         newLoginFields = document.querySelectorAll('.addNewText');
         newLoginChecks = document.querySelectorAll('.addNewCheck');
         newLoginSlider = document.getElementById('length-slider');
         newLoginLength = document.getElementById('length-label');
 
+        newLoginFields[0].disabled = editing;
+
         function refreshLogin(){
-            newLoginFields.forEach(field => {
-                field.value = '';
-            });
+            newLoginFields[0].value = (!editing)?"":currentLogin.name;
+            newLoginFields[1].value = (!editing)?"":currentLogin.user;
+            newLoginFields[2].value = (!editing)?"":currentLogin.pass;
+
             newLoginChecks.forEach(check => {
                 check.checked = true;
             });
@@ -575,18 +646,38 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             });
         });
 
-        newLoginFields.forEach((element,index) => {
-            element.addEventListener('change',(event)=>{
-                window.updateField(index,event.target.value);
+        newLoginFields.forEach((field, index) => {
+            field.addEventListener('change', (event) => {
+                window.updateField(index, event.target.value).then(result => {
+                    switch(index) {
+                        case 0:
+                            currentLogin.name = event.target.value;
+                            break;
+                        case 1:
+                            currentLogin.user = event.target.value;
+                            break;
+                        case 2:
+                            currentLogin.pass = event.target.value;
+                            break;
+                    }
+                });
             });
         });
 
         saveLoginBtn.addEventListener('click', ()=>{
+            if(editing){
+                window.updateLogin().then(result =>{
+                    refreshLogin();
+                });
+                return;
+            }
             window.saveLogin().then(result => {
                 refreshLogin();
                 updateList(JSON.stringify(result));
             });
         });
+
+        refreshLogin();
     }
 
     //end
@@ -667,6 +758,7 @@ std::string randomPassword(int length, int flags){
 //////////////////////////////////////////////
 fileHandler LOGIN_STORAGE;
 struct login TEMPORARY_LOGIN;
+int LAST_OPEN;
 
 #define DEBUG
 
@@ -719,7 +811,9 @@ std::string open_login(const std::string &request){
     std::cout << "Opening login " << loginIndex << std::endl;
     #endif
 
-    return LOGIN_STORAGE.getLoginJson(std::stoi(loginIndex));          
+    LAST_OPEN = std::stoi(loginIndex);
+
+    return LOGIN_STORAGE.getLoginJson(LAST_OPEN);          
 }
 
 std::string update_field(const std::string &request){
@@ -745,13 +839,25 @@ std::string update_field(const std::string &request){
     return "";
 }
 
+std::string update_login(const std::string &request){
+    #ifdef DEBUG
+    std::cout << "updated login " << LAST_OPEN << " to have username \"" << TEMPORARY_LOGIN.username << "\" and password \"" << TEMPORARY_LOGIN.password << "\"" << std::endl;
+    #endif
+
+    LOGIN_STORAGE.updateLogin(LAST_OPEN,USER,TEMPORARY_LOGIN.username);
+    LOGIN_STORAGE.updateLogin(LAST_OPEN,PASS,TEMPORARY_LOGIN.password);
+    return "";
+}
+
 enum webviewBinds {
     MENU_BUTTON,
     SEND_FILE,
     GENERATE_PASSWORD,
     SAVE_LOGIN,
     OPEN_LOGIN,
-    UPDATE_FIELD
+    UPDATE_FIELD,
+    UPDATE_LOGIN
+
 };
 
 std::string bindDispatcher(enum webviewBinds calledBind,const std::string &request){
@@ -765,6 +871,7 @@ std::string bindDispatcher(enum webviewBinds calledBind,const std::string &reque
         case OPEN_LOGIN:        return open_login(request);
         case SAVE_LOGIN:        return save_login(request);
         case UPDATE_FIELD:      return update_field(request);
+        case UPDATE_LOGIN:      return update_login(request);
     }
     return ""; //we should never be here but the compiles dislikes if this doesn't exist
 }
@@ -815,11 +922,17 @@ int main(){
         },
         nullptr
     );
-
     w.bind(
         "updateField",
         [&](const std::string &seq, const std::string &req, void *){
             w.resolve(seq,0,bindDispatcher(UPDATE_FIELD,req));
+        },
+        nullptr
+    );
+    w.bind(
+        "updateLogin",
+        [&](const std::string &seq, const std::string &req, void *){
+            w.resolve(seq,0,bindDispatcher(UPDATE_LOGIN,req));
         },
         nullptr
     );

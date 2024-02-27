@@ -307,6 +307,7 @@
                 </div>
             </div>
             
+            <input id="login-edit-button" type="button" value="Edit">
             <div id="button-container">
                 <label for="login-delete-button" id="deletionLabel" class="hidden">Press again to confirm</label>
                 <input id="login-delete-button" type="button" value="Delete">
@@ -366,6 +367,22 @@
     ///////////////////////////////////////////////
     //right section toggle
     //////////////////////////////////////////////
+    //this section is split in two screens, one for viewing a login and one for editing or adding a new one
+    //both screens have it's html elements declared as undefined beforehand since non existing DOM elements cannot be referenced
+    //each screen has a function to load it's DOM
+    //this is done later
+
+    //2 variables we need to keep track for both so editing a saved login can work
+
+    //editing is whether or not a login is being edited to change the behavior of the save button
+    //currentLogin is the login object
+
+    var editing = false;
+    var currentLogin = {
+        name : "",
+        user : "",
+        pass : ""
+    };
 
     var currentScreen = 0;
     // 1 - new login
@@ -375,20 +392,35 @@
     var rightSection = document.getElementById('right-section');
 
     function openNewLoginScreen(){
-        loginInfo = "";
+        if(!editing){
+            currentLogin.name = "";
+            currentLogin.user = "";
+            currentLogin.pass = "";
+        }
+
         currentScreen = 1;
         toggleScreen();
     }
 
     function openLoginInfoScreen(loginJson){
-        loginInfo = loginJson;
+        editing = false;
+        var loginInfo = JSON.parse(loginJson);
+
+        currentLogin.name = loginInfo.login;
+        currentLogin.user = loginInfo.username;
+        currentLogin.pass = loginInfo.password;
+
         currentScreen = 2;
         toggleScreen();
     }
 
     function closeScreens(){
         //closes either one of the screens opened above
-        loginInfo = "";
+        currentLogin.name = "";
+        currentLogin.user = "";
+        currentLogin.pass = "";
+        editing = false;
+
         currentScreen = 0;
         toggleScreen();
     }
@@ -447,18 +479,6 @@
     //right section
     //////////////////////////////////////////////
 
-    //this section is split in two, for viewing a login and for adding a new one
-    //both screens have it's html elements declared as undefined beforehand since non existing DOM elements cannot be referenced
-    //each screen has a function to load it's DOM
-    //3 variables we need to keep track for both so editing a saved login can work
-
-    //loginInfo stores the information of the current login so it can be passed between the two
-    //editing is whether or not a login is being edited to change the behavior of the save button
-    //currentLogin is the login being edited
-
-    var loginInfo = "";
-    var editing = false;
-    var currentLogin = undefined;
 
     ///////////////////////////////////////////////
     //viewing info of a saved login
@@ -487,11 +507,9 @@
         showingPassword = false;
         clickcount = 0;
 
-        const loginData = JSON.parse(loginInfo);
-
-        loginInfoFields[0].value = loginData.login;
-        loginInfoFields[1].value = loginData.username;
-        loginInfoFields[2].value = loginData.password;
+        loginInfoFields[0].value = currentLogin.name;
+        loginInfoFields[1].value = currentLogin.user;
+        loginInfoFields[2].value = currentLogin.pass;
 
         loginInfoShowButton.addEventListener('click',()=>{
             if(showingPassword){
@@ -529,9 +547,14 @@
             }
         });
 
+        loginInfoEditButton.addEventListener('click',()=>{
+            editing = true;
+            openNewLoginScreen();
+        });
+
         loginInfoCopyButton.addEventListener('click',()=>{
             //navigator.clipboard seems to not actually work in webview, copy button was commented out temporarily, i might handle it on the c++ side later
-            navigator.clipboard.writeText(loginInfoFields[2].value);
+            navigator.clipboard.writeText(currentLogin.pass);
             loginInfoCopyButton.value = 'Copied';
             setTimeout(()=>{
                 loginInfoCopyButton.value = 'Copy';
@@ -562,10 +585,13 @@
         newLoginSlider = document.getElementById('length-slider');
         newLoginLength = document.getElementById('length-label');
 
+        newLoginFields[0].disabled = editing;
+
         function refreshLogin(){
-            newLoginFields.forEach(field => {
-                field.value = '';
-            });
+            newLoginFields[0].value = (!editing)?"":currentLogin.name;
+            newLoginFields[1].value = (!editing)?"":currentLogin.user;
+            newLoginFields[2].value = (!editing)?"":currentLogin.pass;
+
             newLoginChecks.forEach(check => {
                 check.checked = true;
             });
@@ -611,18 +637,38 @@
             });
         });
 
-        newLoginFields.forEach((element,index) => {
-            element.addEventListener('change',(event)=>{
-                window.updateField(index,event.target.value);
+        newLoginFields.forEach((field, index) => {
+            field.addEventListener('change', (event) => {
+                window.updateField(index, event.target.value).then(result => {
+                    switch(index) {
+                        case 0:
+                            currentLogin.name = event.target.value;
+                            break;
+                        case 1:
+                            currentLogin.user = event.target.value;
+                            break;
+                        case 2:
+                            currentLogin.pass = event.target.value;
+                            break;
+                    }
+                });
             });
         });
 
         saveLoginBtn.addEventListener('click', ()=>{
+            if(editing){
+                window.updateLogin().then(result =>{
+                    refreshLogin();
+                });
+                return;
+            }
             window.saveLogin().then(result => {
                 refreshLogin();
                 updateList(JSON.stringify(result));
             });
         });
+
+        refreshLogin();
     }
 
     //end

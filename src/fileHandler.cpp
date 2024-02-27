@@ -59,3 +59,23 @@ std::string fileHandler::getLoginNames(){
 void fileHandler::addLogin(const struct login& loginInfo){
     storedLogins.push_back(loginInfo);
 }
+
+void fileHandler::updateLogin(int index,enum loginFields field,const std::string &newValue){
+    switch (field)
+    {
+    case NAME:
+        storedLogins[index].login = newValue;
+        break;
+
+    case USER:
+        storedLogins[index].username = newValue;
+        break;
+    
+    case PASS:
+        storedLogins[index].password = newValue;
+        break;
+    
+    default:
+        break;
+    }
+}

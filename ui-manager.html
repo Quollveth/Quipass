@@ -264,7 +264,9 @@
 </div>
 
 <script>
-    // screen when adding a new login
+    //the variables below are used to toggle the right section between the two modes, for viewing an existing login and for adding a new one
+
+    // section when adding a new login
     const newLoginSection = `
         <h2 id="main-header">New Login</h2>
         <div id="login-form">
@@ -291,7 +293,7 @@
             <input id="save-button" type="button" value="Save">
         </div>
         `;
-    // screen when viewing an existing login
+    // section when viewing an existing login
     const displayLoginSection = `
         <h2 id="main-header">Saved login</h2>
         <div id="login-form">
@@ -312,7 +314,10 @@
         </div>
     `;
 
-    //menu stuff
+    ///////////////////////////////////////////////
+    //top bar
+    //////////////////////////////////////////////
+
     var menuButtons = [
         document.getElementById('button-new'),
         document.getElementById('button-save'),
@@ -325,11 +330,17 @@
         });
     });
 
-    //file loading stuff
+    ///////////////////////////////////////////////
+    //file handling
+    //////////////////////////////////////////////
+
+    //i wanted to handle file I/O on the c++ side, but due to webview limitations we cannot get the full path of a file so it has to be done here
+
     var fileIn = document.getElementById('fileInput');
     var decryptBtn = document.getElementById('decrypt-button');
     var passwordField = document.getElementById('file-password');
     var filenameLabel = document.getElementById('selectedFileLabel');
+
     var currFile;
     
     fileIn.addEventListener('change', (event)=>{
@@ -352,7 +363,10 @@
         reader.readAsBinaryString(currFile);
     });
 
-    //screen toggle stuff
+    ///////////////////////////////////////////////
+    //right section toggle
+    //////////////////////////////////////////////
+
     var currentScreen = 0;
     // 1 - new login
     // 2 - view login
@@ -396,52 +410,78 @@
 
     }
 
-    //saved logins list stuff
+    ///////////////////////////////////////////////
+    //list of saved logins
+    //////////////////////////////////////////////
+
     var loginListHead = document.getElementById('logins-list');
 
     function updateList(stringValues){
-        //update the list head to have a button for each saved login
+        //creates a html list of buttons each one matching the name of a saved login
         const values = JSON.parse(stringValues);
 
         loginListHead.innerHTML = "";
         values.forEach((value,i) => {
+            //create the button
             const listElement = document.createElement('li');
             const button = document.createElement('button');
             button.textContent = value;
             button.id = `login-button-${i}`;
+
+            //the button has an event listener that passes it's id so we can get the info of the clicked login
+            //since the list and the storage vector are aligned a search is not needed
             button.addEventListener('click',(event)=>{
                 var btnID = event.target.id;
                 window.openLogin(btnID[btnID.length - 1]).then(result => {
                     openLoginInfoScreen(JSON.stringify(result));
                 });
             });
+
             button.classList.add('loginListItem');
             listElement.appendChild(button);
             loginListHead.appendChild(listElement);
         });
     }
 
+    ///////////////////////////////////////////////
+    //right section
+    //////////////////////////////////////////////
 
-    //login info stuff
-    var loginInfo;
+    //this section is split in two, for viewing a login and for adding a new one
+    //both screens have it's html elements declared as undefined beforehand since non existing DOM elements cannot be referenced
+    //each screen has a function to load it's DOM
+    //3 variables we need to keep track for both so editing a saved login can work
 
+    //loginInfo stores the information of the current login so it can be passed between the two
+    //editing is whether or not a login is being edited to change the behavior of the save button
+    //currentLogin is the login being edited
+
+    var loginInfo = "";
+    var editing = false;
+    var currentLogin = undefined;
+
+    ///////////////////////////////////////////////
+    //viewing info of a saved login
+    //////////////////////////////////////////////
+
+    //DOM elements
     var loginInfoFields = [];
     var loginInfoShowButton;
     var loginInfoCopyButton;
     var loginInfoEditButton;
     var loginInfoDeleteButton;
     var loginInfoDeleteLabel;
+
+    //variables for this screen
     var showingPassword;
     var clickcount;
 
     function loadLoginInfoScreen(){
-        //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
         loginInfoShowButton = document.getElementById('show-button');
         loginInfoCopyButton = document.getElementById('copy-button');
         loginInfoEditButton = document.getElementById('login-edit-button');
         loginInfoDeleteButton = document.getElementById('login-delete-button');
         loginInfoDeleteLabel = document.getElementById('deletionLabel');
-
         loginInfoFields = document.querySelectorAll('.login-info-field');
 
         showingPassword = false;
@@ -452,13 +492,6 @@
         loginInfoFields[0].value = loginData.login;
         loginInfoFields[1].value = loginData.username;
         loginInfoFields[2].value = loginData.password;
-
-        document.addEventListener('click', (event) => {
-            if (event.target != loginInfoDeleteButton) {
-                clickcount = 0;
-                loginInfoDeleteLabel.classList.add('hidden');
-            }
-        });
 
         loginInfoShowButton.addEventListener('click',()=>{
             if(showingPassword){
@@ -472,7 +505,16 @@
             showingPassword = !showingPassword;            
         });
 
+        document.addEventListener('click', (event) => {
+            //this exists for the delete button below, clicking anywhere else will reset the double click counter
+            if (event.target != loginInfoDeleteButton) {
+                clickcount = 0;
+                loginInfoDeleteLabel.classList.add('hidden');
+            }
+        });
+
         loginInfoDeleteButton.addEventListener('click',()=>{
+            //needs to be clicked twice before it works, shows a warning after first click
             clickcount++;
             if(clickcount == 1){
                 loginInfoDeleteLabel.classList.remove('hidden');
@@ -488,6 +530,7 @@
         });
 
         loginInfoCopyButton.addEventListener('click',()=>{
+            //navigator.clipboard seems to not actually work in webview, copy button was commented out temporarily, i might handle it on the c++ side later
             navigator.clipboard.writeText(loginInfoFields[2].value);
             loginInfoCopyButton.value = 'Copied';
             setTimeout(()=>{
@@ -498,20 +541,22 @@
     }
 
     //add new login stuff
+
+    //DOM elements
     var generatePasswordBtn;
     var saveLoginBtn;
     var newLoginFields = [];
     var newLoginChecks = [];
     var newLoginSlider;
     var newLoginLength;
+
+    //variables for this screen
     var passwordOptions = 15;
     var passwordLength = 12;
 
     function loadAddLoginScreen(){
-        //dom has to be reloaded every time we change it since the elements that don't exist can't be referenced
         generatePasswordBtn = document.getElementById('generate-password');
         saveLoginBtn = document.getElementById('save-button');
-
         newLoginFields = document.querySelectorAll('.addNewText');
         newLoginChecks = document.querySelectorAll('.addNewCheck');
         newLoginSlider = document.getElementById('length-slider');

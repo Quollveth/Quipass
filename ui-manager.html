@@ -233,10 +233,7 @@
 <div id="container">
     <div id="topbar">
         <button id="button-new" class="menu-button">New Login</button>
-        <ul>
-            <li><button id="button-save" class="menu-button">Save</button></li>
-            <li><button id="button-exit" class="menu-button">Exit</button></li>
-        </ul>
+        <button id="button-save" class="menu-button">Save</button>
     </div>
 
     <div id="content">
@@ -316,26 +313,10 @@
     `;
 
     ///////////////////////////////////////////////
-    //top bar
-    //////////////////////////////////////////////
-
-    var menuButtons = [
-        document.getElementById('button-new'),
-        document.getElementById('button-save'),
-        document.getElementById('button-exit')
-    ];
-
-    menuButtons.forEach((element, index)=>{
-        element.addEventListener('click', ()=>{
-            window.menuButton(index);
-        });
-    });
-
-    ///////////////////////////////////////////////
     //file handling
     //////////////////////////////////////////////
 
-    //i wanted to handle file I/O on the c++ side, but due to webview limitations we cannot get the full path of a file so it has to be done here
+    //due to limitations of webview file in has to be done on the js side, however webkit does not expose a way to download a file so file out has to be done on the c++ side, so now nothing can be on the same place and everyone is unhappy
 
     var fileIn = document.getElementById('fileInput');
     var decryptBtn = document.getElementById('decrypt-button');
@@ -362,6 +343,24 @@
             window.sendFile(fileInfo);
         }
         reader.readAsBinaryString(currFile);
+    });
+
+    ///////////////////////////////////////////////
+    //top bar
+    //////////////////////////////////////////////
+
+    var menuButtons = [
+        document.getElementById('button-new'),
+        document.getElementById('button-save'),
+    ];
+
+    menuButtons[0].addEventListener('click',()=>{
+        editing = false;
+        openNewLoginScreen();
+    });
+
+    menuButtons[1].addEventListener('click',()=>{
+        window.saveFile();
     });
 
     ///////////////////////////////////////////////

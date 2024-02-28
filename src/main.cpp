@@ -242,10 +242,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
 <div id="container">
     <div id="topbar">
         <button id="button-new" class="menu-button">New Login</button>
-        <ul>
-            <li><button id="button-save" class="menu-button">Save</button></li>
-            <li><button id="button-exit" class="menu-button">Exit</button></li>
-        </ul>
+        <button id="button-save" class="menu-button">Save</button>
     </div>
 
     <div id="content">
@@ -325,24 +322,10 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     `;
 
     ///////////////////////////////////////////////
-    //top bar
-    //////////////////////////////////////////////
-
-    var menuButtons = [
-        document.getElementById('button-new'),
-        document.getElementById('button-save'),
-        document.getElementById('button-exit')
-    ];
-
-    menuButtons.forEach((element, index)=>{
-        element.addEventListener('click', ()=>{
-            window.menuButton(index);
-        });
-    });
-
-    ///////////////////////////////////////////////
     //file handling
     //////////////////////////////////////////////
+
+    const dataToSave = "Hello i am a text file for testing text";
 
     //i wanted to handle file I/O on the c++ side, but due to webview limitations we cannot get the full path of a file so it has to be done here
 
@@ -371,6 +354,37 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
             window.sendFile(fileInfo);
         }
         reader.readAsBinaryString(currFile);
+    });
+
+    function download(filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+    }
+
+    ///////////////////////////////////////////////
+    //top bar
+    //////////////////////////////////////////////
+
+    var menuButtons = [
+        document.getElementById('button-new'),
+        document.getElementById('button-save'),
+    ];
+
+    menuButtons[0].addEventListener('click',()=>{
+        editing = false;
+        openNewLoginScreen();
+    });
+
+    menuButtons[1].addEventListener('click',()=>{
+        download("test.txt",dataToSave);
     });
 
     ///////////////////////////////////////////////
@@ -773,6 +787,7 @@ inline std::string getRequest(const std::string& request){
     return request.substr(2, request.length() - 4);
 }
 
+
 ///////////////////////////////////////////////
 //dispatcher
 //////////////////////////////////////////////
@@ -849,15 +864,22 @@ std::string update_login(const std::string &request){
     return "";
 }
 
+std::string save_file(const std::string &request){
+    int action = std::stoi(getRequest(request));
+    if(action = 2){
+
+    }
+    return "";
+}
+
 enum webviewBinds {
-    MENU_BUTTON,
+    SAVE_FILE,
     SEND_FILE,
     GENERATE_PASSWORD,
     SAVE_LOGIN,
     OPEN_LOGIN,
     UPDATE_FIELD,
     UPDATE_LOGIN
-
 };
 
 std::string bindDispatcher(enum webviewBinds calledBind,const std::string &request){
@@ -872,6 +894,7 @@ std::string bindDispatcher(enum webviewBinds calledBind,const std::string &reque
         case SAVE_LOGIN:        return save_login(request);
         case UPDATE_FIELD:      return update_field(request);
         case UPDATE_LOGIN:      return update_login(request);
+        case SAVE_FILE:       return save_file(request);
     }
     return ""; //we should never be here but the compiles dislikes if this doesn't exist
 }
@@ -888,9 +911,9 @@ int main(){
         // resolve returns the function (resolved promise), resolve(request id, status, return value)
 
     w.bind(
-        "menuButton",
+        "saveFile",
         [&](const std::string &seq, const std::string &req, void *){
-            w.resolve(seq,0,bindDispatcher(MENU_BUTTON,req));
+            w.resolve(seq,0,bindDispatcher(SAVE_FILE,req));
         },
         nullptr
     );
@@ -941,5 +964,5 @@ int main(){
 
     w.run();
 
-    return 1;
+    return 0;
 }

@@ -5,6 +5,8 @@
 #include <string>
 #include <iostream>
 #include <random>
+#include <fstream>
+#include <filesystem>
 
 constexpr const auto html = 
 R"html(<!-- this is a copy of the html used for the gui, including css and javascript for ease of editing -->
@@ -325,9 +327,9 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     //file handling
     //////////////////////////////////////////////
 
-    const dataToSave = "Hello i am a text file for testing text";
-
-    //i wanted to handle file I/O on the c++ side, but due to webview limitations we cannot get the full path of a file so it has to be done here
+    //due to limitations of webview file in has to be done on the js side
+    //however webkit does not expose a way to download a file so file out has to be done on the c++ side
+    //so now nothing can be on the same place and everyone is unhappy
 
     var fileIn = document.getElementById('fileInput');
     var decryptBtn = document.getElementById('decrypt-button');
@@ -351,23 +353,12 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
                 password: passwordField.value,
                 content: contents
             };
-            window.sendFile(fileInfo);
+            window.openFile(fileInfo).then(result => {
+                updateList(JSON.stringify(result));
+            });
         }
         reader.readAsBinaryString(currFile);
     });
-
-    function download(filename, text) {
-        var element = document.createElement('a');
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-        element.setAttribute('download', filename);
-
-        element.style.display = 'none';
-        document.body.appendChild(element);
-
-        element.click();
-
-        document.body.removeChild(element);
-    }
 
     ///////////////////////////////////////////////
     //top bar
@@ -384,7 +375,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     });
 
     menuButtons[1].addEventListener('click',()=>{
-        download("test.txt",dataToSave);
+        window.saveFile();
     });
 
     ///////////////////////////////////////////////
@@ -774,8 +765,6 @@ fileHandler LOGIN_STORAGE;
 struct login TEMPORARY_LOGIN;
 int LAST_OPEN;
 
-#define DEBUG
-
 inline std::string toResponse(const std::string& input) {
     //makes a string into a json array webview will accept
     return "[\"" + input + "\"]";
@@ -865,16 +854,41 @@ std::string update_login(const std::string &request){
 }
 
 std::string save_file(const std::string &request){
-    int action = std::stoi(getRequest(request));
-    if(action = 2){
+    std::filesystem::path cwd = std::filesystem::current_path() / "saved_logins.json";
+    std::ofstream file(cwd.string());
+    file << LOGIN_STORAGE.exportFile();
+    file.close();
 
-    }
     return "";
+}
+
+std::string open_file(const std::string &request){
+    static bool working;
+    if(working){
+        return "";
+    }
+    working = true;
+
+    std::string innerJson = webview::detail::json_parse(request, "", 0);
+
+    std::string filePassword = webview::detail::json_parse(innerJson, "password", 0);
+    std::string fileContent =  webview::detail::json_parse(innerJson, "content", 0);
+
+    #ifdef DEBUG
+    std::string fileName =  webview::detail::json_parse(innerJson, "name", 0);
+    std::cout << "Received file " << fileName << " with password " << filePassword << " and contents " << fileContent << std::endl;
+    #endif
+
+    if(LOGIN_STORAGE.importFile(fileContent, filePassword) == false){ //wrong password or invalid file
+        return "";
+    }
+
+    return LOGIN_STORAGE.getLoginNames();
 }
 
 enum webviewBinds {
     SAVE_FILE,
-    SEND_FILE,
+    OPEN_FILE,
     GENERATE_PASSWORD,
     SAVE_LOGIN,
     OPEN_LOGIN,
@@ -894,7 +908,8 @@ std::string bindDispatcher(enum webviewBinds calledBind,const std::string &reque
         case SAVE_LOGIN:        return save_login(request);
         case UPDATE_FIELD:      return update_field(request);
         case UPDATE_LOGIN:      return update_login(request);
-        case SAVE_FILE:       return save_file(request);
+        case SAVE_FILE:         return save_file(request);
+        case OPEN_FILE:         return open_file(request);
     }
     return ""; //we should never be here but the compiles dislikes if this doesn't exist
 }
@@ -918,9 +933,9 @@ int main(){
         nullptr
     );
     w.bind(
-      "sendFile",
+      "openFile",
       [&](const std::string &seq, const std::string &req, void *) {
-            w.resolve(seq,0,bindDispatcher(SEND_FILE,req));
+            w.resolve(seq,0,bindDispatcher(OPEN_FILE,req));
       },
       nullptr
     );

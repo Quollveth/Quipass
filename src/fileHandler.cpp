@@ -18,28 +18,23 @@ std::string fileHandler::getLoginJson(int index){
     std::advance(it, index);
     const login& loginInfo = *it;
 
-    std::stringstream ret;
-    ret << "{";
-    ret << "\"login\":\"" << loginInfo.login << "\",";
-    ret << "\"username\":\"" << loginInfo.username << "\",";
-    ret << "\"password\":\"" << loginInfo.password << "\"";
-    ret << "}";
-
-    return ret.str();
+    return loginToJson(loginInfo);
 }
 
-std::string fileHandler::JsonOut(){
-    std::string json = "[";
-    auto it = storedLogins.begin();
-    while (it != storedLogins.end()) {
-        json += getLoginJson(std::distance(storedLogins.begin(), it));
-        ++it;
-        if (it != storedLogins.end()) {
-            json += ",";
+    std::string fileHandler::JsonOut() {
+        std::stringstream json;
+        json << "[";
+        bool first = true;
+        for (const auto& login : storedLogins) {
+            if (!first) {
+                json << ",";
+            }
+            json << loginToJson(login);
+            first = false;
         }
+        json << "]";
+        return json.str();
     }
-    return json + "]";
-}
 
 std::string fileHandler::getLoginNames(){
     std::string json = "[";
@@ -77,5 +72,35 @@ void fileHandler::updateLogin(int index,enum loginFields field,const std::string
     
     default:
         break;
+    }
+}
+
+std::string fileHandler::exportFile(){
+    //encrypt file in here
+    return JsonOut();
+}
+
+bool fileHandler::importFile(std::string fileData, std::string filepassword){
+    //decrypt file in here
+
+    parseLoginJson(fileData);
+
+    return true;
+}
+
+void fileHandler::parseLoginJson(std::string jsonData){
+    int i = 0;
+    while(true){
+        std::string current = webview::detail::json_parse(jsonData, "", i);
+        if(current.empty()) break;
+
+        struct login newLogin;
+        newLogin.login = webview::detail::json_parse(current, "login", 0);
+        newLogin.username = webview::detail::json_parse(current, "username", 0);
+        newLogin.password = webview::detail::json_parse(current, "password", 0);
+
+        addLogin(newLogin);
+
+        i++;
     }
 }

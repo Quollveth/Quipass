@@ -316,7 +316,9 @@
     //file handling
     //////////////////////////////////////////////
 
-    //due to limitations of webview file in has to be done on the js side, however webkit does not expose a way to download a file so file out has to be done on the c++ side, so now nothing can be on the same place and everyone is unhappy
+    //due to limitations of webview file in has to be done on the js side
+    //however webkit does not expose a way to download a file so file out has to be done on the c++ side
+    //so now nothing can be on the same place and everyone is unhappy
 
     var fileIn = document.getElementById('fileInput');
     var decryptBtn = document.getElementById('decrypt-button');
@@ -340,7 +342,9 @@
                 password: passwordField.value,
                 content: contents
             };
-            window.sendFile(fileInfo);
+            window.openFile(fileInfo).then(result => {
+                updateList(JSON.stringify(result));
+            });
         }
         reader.readAsBinaryString(currFile);
     });

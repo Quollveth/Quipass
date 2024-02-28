@@ -23,6 +23,10 @@
         background-color: #919191 !important;
     }
 
+    .disabled:hover {
+        color: #3f3f3f !important;
+    }
+
     .hidden {
         display: none !important;
     }
@@ -63,8 +67,13 @@
     #button-save:hover{
         color: #ff9900;
     }
-    #button-exit:hover{
-        color: #ff4848;
+    .textbox {
+        background-color: transparent;
+        border: 1px solid #fff;
+        color: #fff;
+        font-size: 16px;
+        padding: 5px 10px;
+        margin-left: 10px;
     }
 
     /* #content holds both sections */
@@ -233,7 +242,10 @@
 <div id="container">
     <div id="topbar">
         <button id="button-new" class="menu-button">New Login</button>
-        <button id="button-save" class="menu-button">Save</button>
+        <div>
+            <input type="text" id="text-box" placeholder="File password" class="textbox">
+            <button id="button-save" class="menu-button">Save File</button>
+        </div>
     </div>
 
     <div id="content">
@@ -356,6 +368,7 @@
     var menuButtons = [
         document.getElementById('button-new'),
         document.getElementById('button-save'),
+        document.getElementById('text-box')
     ];
 
     menuButtons[0].addEventListener('click',()=>{
@@ -364,7 +377,8 @@
     });
 
     menuButtons[1].addEventListener('click',()=>{
-        window.saveFile();
+        console.log('hi');
+        window.saveFile(menuButtons[2].value);
     });
 
     ///////////////////////////////////////////////

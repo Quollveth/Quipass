@@ -21,20 +21,20 @@ std::string fileHandler::getLoginJson(int index){
     return loginToJson(loginInfo);
 }
 
-    std::string fileHandler::JsonOut() {
-        std::stringstream json;
-        json << "[";
-        bool first = true;
-        for (const auto& login : storedLogins) {
-            if (!first) {
-                json << ",";
-            }
-            json << loginToJson(login);
-            first = false;
+std::string fileHandler::JsonOut() {
+    std::stringstream json;
+    json << "[";
+    bool first = true;
+    for (const auto& login : storedLogins) {
+        if (!first) {
+            json << ",";
         }
-        json << "]";
-        return json.str();
+        json << loginToJson(login);
+        first = false;
     }
+    json << "]";
+    return json.str();
+}
 
 std::string fileHandler::getLoginNames(){
     std::string json = "[";
@@ -75,16 +75,21 @@ void fileHandler::updateLogin(int index,enum loginFields field,const std::string
     }
 }
 
-std::string fileHandler::exportFile(){
-    //encrypt file in here
-    return JsonOut();
+std::string fileHandler::exportFile(const std::string &filePassword){   
+
+    return base64_encode(JsonOut().insert(0,SIGNATURE));
 }
 
-bool fileHandler::importFile(std::string fileData, std::string filepassword){
-    //decrypt file in here
+bool fileHandler::importFile(const std::string &fileData, const std::string &filePassword){
+    
+    std::string loginData = base64_decode(fileData);
 
-    parseLoginJson(fileData);
+    if(loginData.substr(0,11).compare(SIGNATURE)!=0){
+        return false;
+    }
 
+    loginData.erase(0,11);
+    parseLoginJson(loginData);
     return true;
 }
 

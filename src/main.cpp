@@ -32,6 +32,10 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
         background-color: #919191 !important;
     }
 
+    .disabled:hover {
+        color: #3f3f3f !important;
+    }
+
     .hidden {
         display: none !important;
     }
@@ -72,8 +76,13 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     #button-save:hover{
         color: #ff9900;
     }
-    #button-exit:hover{
-        color: #ff4848;
+    .textbox {
+        background-color: transparent;
+        border: 1px solid #fff;
+        color: #fff;
+        font-size: 16px;
+        padding: 5px 10px;
+        margin-left: 10px;
     }
 
     /* #content holds both sections */
@@ -242,7 +251,10 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
 <div id="container">
     <div id="topbar">
         <button id="button-new" class="menu-button">New Login</button>
-        <button id="button-save" class="menu-button">Save</button>
+        <div>
+            <input type="text" id="text-box" placeholder="File password" class="textbox">
+            <button id="button-save" class="menu-button">Save File</button>
+        </div>
     </div>
 
     <div id="content">
@@ -365,6 +377,7 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     var menuButtons = [
         document.getElementById('button-new'),
         document.getElementById('button-save'),
+        document.getElementById('text-box')
     ];
 
     menuButtons[0].addEventListener('click',()=>{
@@ -373,7 +386,8 @@ R"html(<!-- this is a copy of the html used for the gui, including css and javas
     });
 
     menuButtons[1].addEventListener('click',()=>{
-        window.saveFile();
+        console.log('hi');
+        window.saveFile(menuButtons[2].value);
     });
 
     ///////////////////////////////////////////////
@@ -852,11 +866,25 @@ std::string update_login(const std::string &request){
 }
 
 std::string save_file(const std::string &request){
-    std::filesystem::path cwd = std::filesystem::current_path() / "saved_logins.json";
+    static bool working;
+    if(working){
+        return "";
+    }
+    working = true;
+
+    std::filesystem::path cwd = std::filesystem::current_path() / "saved_logins.qps";
     std::ofstream file(cwd.string());
-    file << LOGIN_STORAGE.exportFile();
+
+    std::string filePass = (request.compare("[\"\"]")!=0)?getRequest(request):"";
+
+    #ifdef DEBUG
+    std::cout << "Saving file with password " << filePass << std::endl;
+    #endif
+
+    file << LOGIN_STORAGE.exportFile(filePass);
     file.close();
 
+    working = false;
     return "";
 }
 
@@ -881,6 +909,7 @@ std::string open_file(const std::string &request){
         return "";
     }
 
+    working = false;
     return LOGIN_STORAGE.getLoginNames();
 }
 

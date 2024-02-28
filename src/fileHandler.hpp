@@ -2,16 +2,20 @@
 #define FILEHANDLER_INCLUDED
 
 #include "webview.h"
+#include "base64.h"
 
 #include <string>
 #include <sstream>
 #include <vector>
+#include <iostream>
 
 struct login{
     std::string login;
     std::string username;
     std::string password;
 };
+
+#define SIGNATURE "QUIPASSFILE"
 
 enum loginFields{
     NAME,
@@ -56,9 +60,9 @@ class fileHandler {
 
     void updateLogin(int index,enum loginFields field,const std::string &newValue);
 
-    std::string exportFile();
+    std::string exportFile(const std::string &filePassword);
 
-    bool importFile(std::string fileData, std::string filepassword);
+    bool importFile(const std::string &fileData, const std::string &filepassword);
 };
 
 #endif

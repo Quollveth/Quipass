@@ -944,8 +944,8 @@ std::string bindDispatcher(enum webviewBinds calledBind,const std::string &reque
 int main(){
     webview::webview w(false, nullptr);
 
-    w.set_title("Password Manager");
-    w.set_size(480, 320, WEBVIEW_HINT_NONE);
+    w.set_title("Quipass");
+    w.set_size(720, 480, WEBVIEW_HINT_NONE);
 
     //binds
         // seq -> sequential id of the request

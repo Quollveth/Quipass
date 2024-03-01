@@ -1,6 +1,7 @@
 # Quipass - A Simple Password Manager
 
 Quipass is a password manager written in C++, featuring a GUI using webview. It stores all data in a JSON format encrypted with AES256.
+It includes a password generator with options as well.
 
 This project served as a learning experience, in using proper build systems and third-party libraries.
 

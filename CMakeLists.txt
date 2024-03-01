@@ -3,6 +3,10 @@ project(Quipass VERSION 1.0.0)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../bin)
 
+set(WEBVIEW_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include/webview")
+set(BASE64_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include/cpp-base64")
+set(AES256_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include/Aes256/src")
+
 add_subdirectory(include)
 add_subdirectory(src)
 

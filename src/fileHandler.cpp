@@ -77,20 +77,50 @@ void fileHandler::updateLogin(int index,enum loginFields field,const std::string
 
 std::string fileHandler::exportFile(const std::string &filePassword){   
 
-    return base64_encode(JsonOut().insert(0,SIGNATURE));
+    std::string fileData = JsonOut().insert(0,SIGNATURE);
+
+    if(filePassword.compare("") == 0) return fileData;
+    //no password no encryption
+
+    ByteArray key = stringToByteArray(filePassword);
+    ByteArray plain = stringToByteArray(fileData);
+    ByteArray encrypted;
+
+    Aes256::encrypt(key,plain,encrypted);
+
+    std::string ret = byteArrayToString(encrypted);
+
+    return base64_encode(ret);
 }
 
 bool fileHandler::importFile(const std::string &fileData, const std::string &filePassword){
-    
-    std::string loginData = base64_decode(fileData);
 
-    if(loginData.substr(0,11).compare(SIGNATURE)!=0){
-        return false;
+    std::string jsonData = base64_decode(fileData);
+
+    //check if file has no password
+    if(jsonData.substr(0,11).compare(SIGNATURE)==0){
+        jsonData.erase(0,11);
+        parseLoginJson(jsonData);
+        return true;
     }
 
-    loginData.erase(0,11);
-    parseLoginJson(loginData);
-    return true;
+    //attempt to decrypt
+    ByteArray key = stringToByteArray(filePassword);
+    ByteArray encrypted = stringToByteArray(jsonData);
+    ByteArray decrypted;
+
+    Aes256::decrypt(key,encrypted,decrypted);
+
+    jsonData = byteArrayToString(decrypted);
+
+    //check if valid
+    if(jsonData.substr(0,11).compare(SIGNATURE)==0){
+        jsonData.erase(0,11);
+        parseLoginJson(jsonData);
+        return true;
+    }
+
+    return false;
 }
 
 void fileHandler::parseLoginJson(std::string jsonData){

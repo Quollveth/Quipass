@@ -3,6 +3,7 @@
 
 #include "webview.h"
 #include "base64.h"
+#include "aes256.hpp"
 
 #include <string>
 #include <sstream>
@@ -22,6 +23,18 @@ enum loginFields{
     USER,
     PASS
 };
+
+inline std::string byteArrayToString(ByteArray bytes){
+    return std::string(bytes.begin(), bytes.end());
+}
+
+inline ByteArray stringToByteArray(std::string str){
+    ByteArray bytes;
+    for (char c : str) {
+        bytes.push_back(static_cast<unsigned char>(c));
+    }
+    return bytes;
+}
 
 inline std::string loginToJson(const struct login& loginInfo){
 

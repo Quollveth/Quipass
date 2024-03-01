@@ -28,3 +28,16 @@ add_library(
 )
 
 target_include_directories(base64 PUBLIC "${BASE64_PATH}")
+
+#Aes256
+#https://github.com/Urban82/Aes256
+
+set(AES256_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Aes256/src")
+
+add_library(
+    aes256
+    "${AES256_PATH}/aes256.hpp"
+    "${AES256_PATH}/aes256.cpp"
+)
+
+target_include_directories(aes256 PUBLIC "${AES256_PATH}")
